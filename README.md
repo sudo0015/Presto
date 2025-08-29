@@ -13,7 +13,8 @@
  
 > [!NOTE]
 > 对比 Presto 与文件资源管理器 (单位: MB/s)
-> <img width="1200" height="610" alt="chart" src="https://github.com/user-attachments/assets/667d86df-edee-42f1-9ba7-657ca6f6472c" />
+> ![Chart](https://github.com/user-attachments/assets/c746a96c-6fd0-49b0-be42-303db4bada2c)
+
 
 ### 高效
 
