@@ -1253,10 +1253,16 @@ class AboutInterface(SmoothScrollArea):
         if w.exec():
             pass
 
+    def onHelpAction(self):
+        if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
+            os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        else:
+            WebOpen("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
+
     def __connectSignalToSlot(self):
         self.aboutESCard.clicked.connect(self.onAboutESCardClicked)
         self.aboutBSCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/AboutBugStudio.html")))
-        self.helpCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/PrestoHelp.html")))
+        self.helpCard.clicked.connect(self.onHelpAction)
         self.feedbackCard.clicked.connect(lambda: WebOpen("https://github.com/sudo0015/Presto/issues"))
 
 
@@ -1518,7 +1524,10 @@ class Main(MSFluentWindow):
         self.splashScreen.finish()
 
     def onHelpBtn(self):
-        os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
+            os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        else:
+            WebOpen("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
 
     def onLogBtn(self):
         try:
