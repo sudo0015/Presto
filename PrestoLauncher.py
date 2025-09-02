@@ -7,6 +7,7 @@ import subprocess
 import portalocker
 import PrestoResource
 from typing import Union, Iterable
+from webbrowser import open as WebOpen
 from psutil import process_iter, Process
 from pygetwindow import getWindowsWithTitle as GetWindow
 from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QEvent, QTimer, QRectF
@@ -860,7 +861,10 @@ class Window(MicaWindow):
         sys.exit()
 
     def onOpenHelpBtn(self):
-        os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
+            os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        else:
+            WebOpen("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
         self.close()
         sys.exit()
 

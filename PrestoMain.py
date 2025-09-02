@@ -4,7 +4,7 @@ import os
 import sys
 import subprocess
 import darkdetect
-import ExpressResource
+import PrestoResource
 from psutil import Process
 from random import randint
 from PrestoConfig import cfg

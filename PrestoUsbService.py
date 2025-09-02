@@ -5,6 +5,7 @@ import sys
 import subprocess
 import darkdetect
 import PrestoResource
+from webbrowser import open as WebOpen
 from win32file import GetDiskFreeSpace
 from win32api import GetVolumeInformation
 from PyQt5.QtGui import QIcon, QColor, QPainterPath, QPainter
@@ -865,9 +866,9 @@ class MainWindow(MicaWindow):
         self.pivot.setVisible(False)
 
         self.askInterface.infoBtn.clicked.connect(self.infoBtnOn)
-        self.askInterface.syncBtn.clicked.connect(self.syncBtnOn)
-        self.askInterface.openBtn.clicked.connect(self.openBtnOn)
-        self.optionInterface.backBtn.clicked.connect(self.backBtnOn)
+        self.askInterface.syncBtn.clicked.connect(self.onSyncBtn)
+        self.askInterface.openBtn.clicked.connect(self.onOpenBtn)
+        self.optionInterface.backBtn.clicked.connect(self.onBackBtn)
         self.optionInterface.exitBtn.clicked.connect(sys.exit)
 
         self.vBoxLayout = QVBoxLayout(self)
@@ -928,18 +929,24 @@ class MainWindow(MicaWindow):
         settingAction.triggered.connect(lambda: subprocess.Popen("PrestoSetting.exe", shell=True))
         menu.addAction(settingAction)
         helpAction = Action(FIF.HELP, '帮助')
-        helpAction.triggered.connect(lambda: os.startfile(os.path.abspath("./Doc/PrestoHelp.html")))
+        helpAction.triggered.connect(self.onHelpAction)
         menu.addAction(helpAction)
         menu.addSeparator()
         menu.addAction(Action(FIF.CLOSE, '关闭'))
         menu.exec(QPoint(self.x() + self.askInterface.infoBtn.x() - 315, self.y() + self.askInterface.infoBtn.y() - 55))
 
-    def openBtnOn(self):
+    def onHelpAction(self):
+        if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
+            os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        else:
+            WebOpen("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
+
+    def onOpenBtn(self):
         os.startfile(drive)
         self.close()
         sys.exit()
 
-    def syncBtnOn(self):
+    def onSyncBtn(self):
         self.isClicked = True
         self.stackedWidget.setCurrentWidget(self.optionInterface)
         self.pivot.setCurrentItem(self.optionInterface.objectName())
@@ -948,7 +955,7 @@ class MainWindow(MicaWindow):
         self.move(self.desktop.width() - self.width() - 20, self.desktop.height() - self.height() - 60)
         self.optionInterface.aniGroup.start()
 
-    def backBtnOn(self):
+    def onBackBtn(self):
         self.isClicked = True
         self.stackedWidget.setCurrentWidget(self.askInterface)
         self.pivot.setCurrentItem(self.askInterface.objectName())

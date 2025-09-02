@@ -9,6 +9,7 @@ import portalocker
 import PrestoResource
 from PrestoConfig import cfg
 from psutil import disk_partitions
+from webbrowser import open as WebOpen
 from win32api import GetVolumeInformation
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEvent, QRunnable, QThreadPool, QObject
 from PyQt5.QtGui import QIcon, QCursor, QColor, QPainter
@@ -325,7 +326,7 @@ class TrayApp:
         self._setting_action = QAction(FIF.SETTING.icon(), "设置")
         self._setting_action.triggered.connect(lambda: subprocess.Popen("PrestoSetting.exe", shell=True))
         self._help_action = QAction(FIF.HELP.icon(), "帮助")
-        self._help_action.triggered.connect(lambda: os.startfile(os.path.abspath("./Doc/PrestoHelp.html")))
+        self._help_action.triggered.connect(self.onHelpAction)
 
         self._quit_action = QAction(FIF.POWER_BUTTON.icon(), "退出")
         self._quit_action.triggered.connect(self.quit)
@@ -354,6 +355,12 @@ class TrayApp:
             tmplist = part[i].opts.split(",")
             if len(tmplist) > 1 and tmplist[1] == "removable":
                 subprocess.call(["PrestoUsbService.exe ", str(part[i].device[:2])], shell=True)
+
+    def onHelpAction(self):
+        if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
+            os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        else:
+            WebOpen("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
 
     def updateDriveActions(self):
         for action in self.exeSubMenu.actions():

@@ -1126,13 +1126,19 @@ class HomeInterface(SmoothScrollArea):
         if w.exec():
             os.startfile(os.path.join(os.path.expanduser('~'), '.Presto', 'config', 'config.json'))
 
+    def onHelpAction(self):
+        if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
+            os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        else:
+            WebOpen("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
+
     def __connectSignalToSlot(self):
         self.optionSourceCard.comboBox.currentTextChanged.connect(self.onOptionSourceCard)
         self.cloudCard.clicked.connect(self.__onCloudCardClicked)
         self.clearCard.clicked.connect(self.clearCache)
         self.recoverCard.clicked.connect(self.recoverConfig)
         self.devCard.clicked.connect(self.openConfig)
-        self.helpCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/PrestoHelp.html")))
+        self.helpCard.clicked.connect(self.onHelpAction)
 
 
 class DetailMessageBox(MessageBoxBase):
