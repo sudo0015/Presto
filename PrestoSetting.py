@@ -1259,9 +1259,15 @@ class AboutInterface(SmoothScrollArea):
         else:
             WebOpen("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
 
+    def onAboutBSAction(self):
+        if os.path.exists(os.path.abspath("./Doc/AboutBugStudio.html")):
+            os.startfile(os.path.abspath("./Doc/AboutBugStudio.html"))
+        else:
+            WebOpen("https://sudo0015.github.io/post/guan-yu-%20BUG%20STUDIO.html")
+
     def __connectSignalToSlot(self):
         self.aboutESCard.clicked.connect(self.onAboutESCardClicked)
-        self.aboutBSCard.clicked.connect(lambda: os.startfile(os.path.abspath("./Doc/AboutBugStudio.html")))
+        self.aboutBSCard.clicked.connect(self.onAboutBSAction)
         self.helpCard.clicked.connect(self.onHelpAction)
         self.feedbackCard.clicked.connect(lambda: WebOpen("https://github.com/sudo0015/Presto/issues"))
 
