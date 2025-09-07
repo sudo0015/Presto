@@ -13,14 +13,16 @@ from pygetwindow import getWindowsWithTitle as GetWindow
 from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QEvent, QTimer, QRectF
 from PyQt5.QtGui import QColor, QPainter, QIcon, QPainterPath, QCursor
 from PyQt5.QtWidgets import QApplication, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QCompleter, QFileDialog, \
-    QLineEdit, QAction
+    QLineEdit, QAction, QFrame
 from qfluentwidgets import setTheme, Theme, isDarkTheme, setThemeColor, FluentStyleSheet, TransparentToolButton, \
     RoundMenu, EditableComboBox, HyperlinkButton, PrimaryPushButton, themeColor, PushButton, InfoBar, InfoBarIcon, \
-    InfoBarPosition, setFont, LineEditButton, MenuAnimationType, TransparentPushButton, ToolTipFilter, ToolTipPosition
+    InfoBarPosition, setFont, LineEditButton, MenuAnimationType, TransparentPushButton, ToolTipFilter, ToolTipPosition, \
+    BodyLabel, TextWrap
 from qfluentwidgets.components.widgets.combo_box import ComboItem, ComboBoxMenu
 from qfluentwidgets.components.widgets.line_edit import CompleterMenu
-from qframelesswindow import TitleBar
 from qfluentwidgets import FluentIcon as FIF
+from qframelesswindow import FramelessDialog
+from qframelesswindow import TitleBar
 
 
 if sys.platform == 'win32' and sys.getwindowsversion().build >= 22000:
@@ -52,6 +54,105 @@ class Mutex:
             portalocker.unlock(self.file)
             self.file.close()
             os.remove('PrestoLauncher.lockfile')
+
+
+class UiErrorDialog:
+
+    yesSignal = pyqtSignal()
+    cancelSignal = pyqtSignal()
+
+    def _setUpUi(self, title, content, parent):
+        self.content = content
+        self.titleLabel = QLabel(title, parent)
+        self.contentLabel = BodyLabel(content, parent)
+
+        self.buttonGroup = QFrame(parent)
+        self.yesButton = PrimaryPushButton("确定", self.buttonGroup)
+        self.yesButton.setFixedWidth(140)
+
+        self.vBoxLayout = QVBoxLayout(parent)
+        self.textLayout = QVBoxLayout()
+        self.buttonLayout = QHBoxLayout(self.buttonGroup)
+
+        self.__initWidget()
+
+    def __initWidget(self):
+        self.__setQss()
+        self.__initLayout()
+
+        self.yesButton.setAttribute(Qt.WA_LayoutUsesWidgetRect)
+
+        self.yesButton.setFocus()
+        self.buttonGroup.setFixedHeight(81)
+
+        self.contentLabel.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._adjustText()
+
+        self.yesButton.clicked.connect(self.__onYesButtonClicked)
+
+    def _adjustText(self):
+        if self.isWindow():
+            if self.parent():
+                w = max(self.titleLabel.width(), self.parent().width())
+                chars = max(min(w / 9, 140), 30)
+            else:
+                chars = 100
+        else:
+            w = max(self.titleLabel.width(), self.window().width())
+            chars = max(min(w / 9, 100), 30)
+
+        self.contentLabel.setText(TextWrap.wrap(self.content, chars, False)[0])
+
+    def __initLayout(self):
+        self.vBoxLayout.setSpacing(0)
+        self.vBoxLayout.setContentsMargins(0, 0, 0, 0)
+        self.vBoxLayout.addLayout(self.textLayout, 1)
+        self.vBoxLayout.addWidget(self.buttonGroup, 0, Qt.AlignBottom)
+        self.vBoxLayout.setSizeConstraint(QVBoxLayout.SetMinimumSize)
+
+        self.textLayout.setSpacing(12)
+        self.textLayout.setContentsMargins(24, 24, 24, 24)
+        self.textLayout.addWidget(self.titleLabel, 0, Qt.AlignTop)
+        self.textLayout.addWidget(self.contentLabel, 0, Qt.AlignTop)
+
+        self.buttonLayout.setSpacing(12)
+        self.buttonLayout.setContentsMargins(24, 24, 24, 24)
+        self.buttonLayout.addWidget(self.yesButton, 1, Qt.AlignRight | Qt.AlignVCenter)
+
+    def __onYesButtonClicked(self):
+        self.accept()
+        self.yesSignal.emit()
+
+    def __setQss(self):
+        self.titleLabel.setObjectName("titleLabel")
+        self.contentLabel.setObjectName("contentLabel")
+        self.buttonGroup.setObjectName('buttonGroup')
+
+        FluentStyleSheet.DIALOG.apply(self)
+        FluentStyleSheet.DIALOG.apply(self.contentLabel)
+
+        self.yesButton.adjustSize()
+
+
+class ErrorDialog(FramelessDialog, UiErrorDialog):
+
+    yesSignal = pyqtSignal()
+    cancelSignal = pyqtSignal()
+
+    def __init__(self, title: str, content: str, parent=None):
+        super().__init__(parent=parent)
+        self._setUpUi(title, content, self)
+
+        self.windowTitleLabel = QLabel("Presto", self)
+
+        self.setResizeEnabled(False)
+        self.resize(240, 192)
+        self.titleBar.hide()
+
+        self.vBoxLayout.insertWidget(0, self.windowTitleLabel, 0, Qt.AlignTop)
+        self.windowTitleLabel.setObjectName('windowTitleLabel')
+        FluentStyleSheet.DIALOG.apply(self)
+        self.setFixedSize(self.size())
 
 
 class EditMenu(RoundMenu):
@@ -856,7 +957,14 @@ class Window(MicaWindow):
         self.mainLayout.addLayout(self.bottomLayout)
 
     def onOpenSettingBtn(self):
-        subprocess.Popen("PrestoSetting.exe", shell=True)
+        if os.path.exists('PrestoSetting.exe'):
+            subprocess.Popen("PrestoSetting.exe", shell=True)
+        else:
+            self.window().hide()
+            w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+            w.yesButton.setText("确定")
+            if w.exec():
+                pass
         self.close()
         sys.exit()
 
@@ -930,7 +1038,14 @@ class Window(MicaWindow):
         self.warningInfoBar.close()
         self.warningInfoBar.deleteLater()
         self.usbScanBtn.setDisabled(False)
-        subprocess.Popen("PrestoScan.exe --force-start", shell=True)
+        if os.path.exists('PrestoScan.exe'):
+            subprocess.Popen(["PrestoScan.exe", "--force-start"], shell=True)
+        else:
+            self.window().hide()
+            w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+            w.yesButton.setText("确定")
+            if w.exec():
+                sys.exit()
 
     def onWarningInfoBarCloseBtn(self):
         self.warningInfoBar.close()
@@ -951,19 +1066,27 @@ class Window(MicaWindow):
 
     def onYesBtn(self):
         if self.comboBox.text():
-            subprocess.Popen(["PrestoUsbService.exe", self.comboBox.text().replace('：', ':')], shell=True)
+            if os.path.exists('PrestoUsbService.exe'):
+                subprocess.Popen(["PrestoUsbService.exe", self.comboBox.text().replace('：', ':')], shell=True)
+            else:
+                self.window().hide()
+                w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+                w.yesButton.setText("确定")
+                if w.exec():
+                    pass
             self.close()
             sys.exit()
         else:
-            w = InfoBar(icon=InfoBarIcon.WARNING,
-                        title='未选择盘符',
-                        content='',
-                        orient=Qt.Horizontal,
-                        isClosable=True,
-                        position=InfoBarPosition.BOTTOM,
-                        duration=2000,
-                        parent=self
-                        )
+            w = InfoBar(
+                icon=InfoBarIcon.WARNING,
+                title='未选择盘符',
+                content='',
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM,
+                duration=2000,
+                parent=self
+            )
             w.show()
 
 

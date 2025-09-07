@@ -14,11 +14,12 @@ from win32api import GetVolumeInformation
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEvent, QRunnable, QThreadPool, QObject
 from PyQt5.QtGui import QIcon, QCursor, QColor, QPainter
 from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMainWindow, QAction, QFrame, QLabel, QVBoxLayout, \
-    QGraphicsOpacityEffect, QGridLayout
+    QGraphicsOpacityEffect, QGridLayout, QHBoxLayout
 from qfluentwidgets import RoundMenu, setTheme, Theme, InfoBarPosition, IndeterminateProgressRing, FluentStyleSheet, \
-    InfoBarIcon, isDarkTheme, setThemeColor
+    InfoBarIcon, isDarkTheme, setThemeColor, BodyLabel, PrimaryPushButton, TextWrap
 from qfluentwidgets.components.widgets.info_bar import InfoIconWidget, InfoBarManager, InfoBar
 from qfluentwidgets import FluentIcon as FIF
+from qframelesswindow import FramelessDialog
 
 
 class Mutex:
@@ -44,6 +45,105 @@ class Mutex:
                 os.remove('PrestoScan.lockfile')
             except:
                 pass
+
+
+class UiErrorDialog:
+
+    yesSignal = pyqtSignal()
+    cancelSignal = pyqtSignal()
+
+    def _setUpUi(self, title, content, parent):
+        self.content = content
+        self.titleLabel = QLabel(title, parent)
+        self.contentLabel = BodyLabel(content, parent)
+
+        self.buttonGroup = QFrame(parent)
+        self.yesButton = PrimaryPushButton("确定", self.buttonGroup)
+        self.yesButton.setFixedWidth(140)
+
+        self.vBoxLayout = QVBoxLayout(parent)
+        self.textLayout = QVBoxLayout()
+        self.buttonLayout = QHBoxLayout(self.buttonGroup)
+
+        self.__initWidget()
+
+    def __initWidget(self):
+        self.__setQss()
+        self.__initLayout()
+
+        self.yesButton.setAttribute(Qt.WA_LayoutUsesWidgetRect)
+
+        self.yesButton.setFocus()
+        self.buttonGroup.setFixedHeight(81)
+
+        self.contentLabel.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._adjustText()
+
+        self.yesButton.clicked.connect(self.__onYesButtonClicked)
+
+    def _adjustText(self):
+        if self.isWindow():
+            if self.parent():
+                w = max(self.titleLabel.width(), self.parent().width())
+                chars = max(min(w / 9, 140), 30)
+            else:
+                chars = 100
+        else:
+            w = max(self.titleLabel.width(), self.window().width())
+            chars = max(min(w / 9, 100), 30)
+
+        self.contentLabel.setText(TextWrap.wrap(self.content, chars, False)[0])
+
+    def __initLayout(self):
+        self.vBoxLayout.setSpacing(0)
+        self.vBoxLayout.setContentsMargins(0, 0, 0, 0)
+        self.vBoxLayout.addLayout(self.textLayout, 1)
+        self.vBoxLayout.addWidget(self.buttonGroup, 0, Qt.AlignBottom)
+        self.vBoxLayout.setSizeConstraint(QVBoxLayout.SetMinimumSize)
+
+        self.textLayout.setSpacing(12)
+        self.textLayout.setContentsMargins(24, 24, 24, 24)
+        self.textLayout.addWidget(self.titleLabel, 0, Qt.AlignTop)
+        self.textLayout.addWidget(self.contentLabel, 0, Qt.AlignTop)
+
+        self.buttonLayout.setSpacing(12)
+        self.buttonLayout.setContentsMargins(24, 24, 24, 24)
+        self.buttonLayout.addWidget(self.yesButton, 1, Qt.AlignRight | Qt.AlignVCenter)
+
+    def __onYesButtonClicked(self):
+        self.accept()
+        self.yesSignal.emit()
+
+    def __setQss(self):
+        self.titleLabel.setObjectName("titleLabel")
+        self.contentLabel.setObjectName("contentLabel")
+        self.buttonGroup.setObjectName('buttonGroup')
+
+        FluentStyleSheet.DIALOG.apply(self)
+        FluentStyleSheet.DIALOG.apply(self.contentLabel)
+
+        self.yesButton.adjustSize()
+
+
+class ErrorDialog(FramelessDialog, UiErrorDialog):
+
+    yesSignal = pyqtSignal()
+    cancelSignal = pyqtSignal()
+
+    def __init__(self, title: str, content: str, parent=None):
+        super().__init__(parent=parent)
+        self._setUpUi(title, content, self)
+
+        self.windowTitleLabel = QLabel("Presto", self)
+
+        self.setResizeEnabled(False)
+        self.resize(240, 192)
+        self.titleBar.hide()
+
+        self.vBoxLayout.insertWidget(0, self.windowTitleLabel, 0, Qt.AlignTop)
+        self.windowTitleLabel.setObjectName('windowTitleLabel')
+        FluentStyleSheet.DIALOG.apply(self)
+        self.setFixedSize(self.size())
 
 
 class EjectUsbInfoBar(QFrame):
@@ -242,7 +342,15 @@ class ScanThread(QThread):
             self.now_number = self.update()
             if self.now_number > self.before_number and len(set(self.local_letter + self.mobile_letter).difference(set(self.before_letter))) == 1:
                 self.drive = ''.join(set(self.local_letter + self.mobile_letter).difference(set(self.before_letter)))
-                subprocess.call(["PrestoUsbService.exe ", self.drive], shell=True)
+
+                if os.path.exists('PrestoUsbService.exe'):
+                    subprocess.call(["PrestoUsbService.exe", self.drive], shell=True)
+                else:
+                    w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+                    w.yesButton.setText("确定")
+                    if w.exec():
+                        sys.exit()
+
                 self.before_number = self.now_number
                 self.before_device = self.local_device + self.mobile_letter
                 self.before_letter = self.local_letter + self.mobile_letter
@@ -272,9 +380,15 @@ class EjectRunnable(QRunnable):
     def run(self):
         exit_code = -1
         for i in range(2):
-            exit_code = subprocess.call(["RemoveDrive.exe", self.drive, '-f'], shell=True)
-            if exit_code == 0:
-                break
+            if os.path.exists('RemoveDrive.exe'):
+                exit_code = subprocess.call(["RemoveDrive.exe", self.drive, '-f'], shell=True)
+                if exit_code == 0:
+                    break
+            else:
+                w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+                w.yesButton.setText("确定")
+                if w.exec():
+                    sys.exit()
 
         self.signal.exitCode = exit_code
         self.signal.ejectFinished.emit(True)
@@ -322,9 +436,9 @@ class TrayApp:
 
     def createActions(self):
         self._launcher_action = QAction(FIF.APPLICATION.icon(), "启动台")
-        self._launcher_action.triggered.connect(lambda: subprocess.Popen("PrestoLauncher.exe", shell=True))
+        self._launcher_action.triggered.connect(self.openLauncher)
         self._setting_action = QAction(FIF.SETTING.icon(), "设置")
-        self._setting_action.triggered.connect(lambda: subprocess.Popen("PrestoSetting.exe", shell=True))
+        self._setting_action.triggered.connect(self.openSetting)
         self._help_action = QAction(FIF.HELP.icon(), "帮助")
         self._help_action.triggered.connect(self.onHelpAction)
 
@@ -349,12 +463,36 @@ class TrayApp:
         self.scanThread.wait()
         QApplication.quit()
 
+    def openLauncher(self):
+        if os.path.exists('PrestoLauncher.exe'):
+            subprocess.Popen("PrestoLauncher.exe", shell=True)
+        else:
+            w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+            w.yesButton.setText("确定")
+            if w.exec():
+                sys.exit()
+
+    def openSetting(self):
+        if os.path.exists('PrestoSetting.exe'):
+            subprocess.Popen("PrestoSetting.exe", shell=True)
+        else:
+            w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+            w.yesButton.setText("确定")
+            if w.exec():
+                sys.exit()
+
     def onStartCheck(self):
         part = disk_partitions()
         for i in range(len(part)):
             tmplist = part[i].opts.split(",")
             if len(tmplist) > 1 and tmplist[1] == "removable":
-                subprocess.call(["PrestoUsbService.exe ", str(part[i].device[:2])], shell=True)
+                if os.path.exists('PrestoUsbService.exe'):
+                    subprocess.call(["PrestoUsbService.exe", str(part[i].device[:2])], shell=True)
+                else:
+                    w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+                    w.yesButton.setText("确定")
+                    if w.exec():
+                        sys.exit()
 
     def onHelpAction(self):
         if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
@@ -376,6 +514,7 @@ class TrayApp:
             if drive_name:
                 exe_action = QAction(f"{drive_name} ({drive})", self.exeSubMenu)
                 eject_action = QAction(f"{drive_name} ({drive})", self.ejectSubMenu)
+
                 exe_action.triggered.connect(lambda _, d=drive: subprocess.Popen(["PrestoUsbService.exe", d], shell=True))
                 eject_action.triggered.connect(lambda _, d=drive: self.ejectDrive(d))
 

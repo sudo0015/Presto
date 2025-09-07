@@ -10,19 +10,20 @@ from win32file import GetDiskFreeSpace
 from win32api import GetVolumeInformation
 from PyQt5.QtGui import QIcon, QColor, QPainterPath, QPainter
 from PyQt5.QtCore import Qt, QPoint, QTimer, QDate, QRectF, QPropertyAnimation, QParallelAnimationGroup, \
-    QEasingCurve, QEvent
+    QEasingCurve, QEvent, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QVBoxLayout, QLabel, QStackedWidget, QWidget, QGridLayout, \
     QFrame, QPushButton, QSpinBox, QLineEdit, QAction
 from qfluentwidgets import setTheme, Theme, isDarkTheme, CheckBox, PrimaryPushButton, PushButton, \
     SubtitleLabel, Pivot, TransparentToolButton, RoundMenu, BodyLabel, CaptionLabel, Action, \
     TransparentPushButton, setThemeColor, PrimarySplitPushButton, ZhDatePicker, MaskDialogBase, \
-    PrimaryDropDownPushButton, MenuAnimationType, setFont, ToolTipFilter, ToolTipPosition, ProgressRing
+    PrimaryDropDownPushButton, MenuAnimationType, setFont, ToolTipFilter, ToolTipPosition, ProgressRing, TextWrap
 from qframelesswindow.titlebar import MinimizeButton, CloseButton, MaximizeButton
 from qframelesswindow import TitleBarButton
 from qfluentwidgets.common.style_sheet import FluentStyleSheet, themeColor
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
 from qframelesswindow.utils import startSystemMove
 from qfluentwidgets import FluentIcon as FIF
+from qframelesswindow import FramelessDialog
 
 
 if sys.platform == 'win32' and sys.getwindowsversion().build >= 22000:
@@ -244,6 +245,105 @@ class MessageBoxBase(MaskDialogBase):
     def hideCancelButton(self):
         self.cancelButton.hide()
         self.buttonLayout.insertStretch(0, 1)
+
+
+class UiErrorDialog:
+
+    yesSignal = pyqtSignal()
+    cancelSignal = pyqtSignal()
+
+    def _setUpUi(self, title, content, parent):
+        self.content = content
+        self.titleLabel = QLabel(title, parent)
+        self.contentLabel = BodyLabel(content, parent)
+
+        self.buttonGroup = QFrame(parent)
+        self.yesButton = PrimaryPushButton("确定", self.buttonGroup)
+        self.yesButton.setFixedWidth(140)
+
+        self.vBoxLayout = QVBoxLayout(parent)
+        self.textLayout = QVBoxLayout()
+        self.buttonLayout = QHBoxLayout(self.buttonGroup)
+
+        self.__initWidget()
+
+    def __initWidget(self):
+        self.__setQss()
+        self.__initLayout()
+
+        self.yesButton.setAttribute(Qt.WA_LayoutUsesWidgetRect)
+
+        self.yesButton.setFocus()
+        self.buttonGroup.setFixedHeight(81)
+
+        self.contentLabel.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._adjustText()
+
+        self.yesButton.clicked.connect(self.__onYesButtonClicked)
+
+    def _adjustText(self):
+        if self.isWindow():
+            if self.parent():
+                w = max(self.titleLabel.width(), self.parent().width())
+                chars = max(min(w / 9, 140), 30)
+            else:
+                chars = 100
+        else:
+            w = max(self.titleLabel.width(), self.window().width())
+            chars = max(min(w / 9, 100), 30)
+
+        self.contentLabel.setText(TextWrap.wrap(self.content, chars, False)[0])
+
+    def __initLayout(self):
+        self.vBoxLayout.setSpacing(0)
+        self.vBoxLayout.setContentsMargins(0, 0, 0, 0)
+        self.vBoxLayout.addLayout(self.textLayout, 1)
+        self.vBoxLayout.addWidget(self.buttonGroup, 0, Qt.AlignBottom)
+        self.vBoxLayout.setSizeConstraint(QVBoxLayout.SetMinimumSize)
+
+        self.textLayout.setSpacing(12)
+        self.textLayout.setContentsMargins(24, 24, 24, 24)
+        self.textLayout.addWidget(self.titleLabel, 0, Qt.AlignTop)
+        self.textLayout.addWidget(self.contentLabel, 0, Qt.AlignTop)
+
+        self.buttonLayout.setSpacing(12)
+        self.buttonLayout.setContentsMargins(24, 24, 24, 24)
+        self.buttonLayout.addWidget(self.yesButton, 1, Qt.AlignRight | Qt.AlignVCenter)
+
+    def __onYesButtonClicked(self):
+        self.accept()
+        self.yesSignal.emit()
+
+    def __setQss(self):
+        self.titleLabel.setObjectName("titleLabel")
+        self.contentLabel.setObjectName("contentLabel")
+        self.buttonGroup.setObjectName('buttonGroup')
+
+        FluentStyleSheet.DIALOG.apply(self)
+        FluentStyleSheet.DIALOG.apply(self.contentLabel)
+
+        self.yesButton.adjustSize()
+
+
+class ErrorDialog(FramelessDialog, UiErrorDialog):
+
+    yesSignal = pyqtSignal()
+    cancelSignal = pyqtSignal()
+
+    def __init__(self, title: str, content: str, parent=None):
+        super().__init__(parent=parent)
+        self._setUpUi(title, content, self)
+
+        self.windowTitleLabel = QLabel("Presto", self)
+
+        self.setResizeEnabled(False)
+        self.resize(240, 192)
+        self.titleBar.hide()
+
+        self.vBoxLayout.insertWidget(0, self.windowTitleLabel, 0, Qt.AlignTop)
+        self.windowTitleLabel.setObjectName('windowTitleLabel')
+        FluentStyleSheet.DIALOG.apply(self)
+        self.setFixedSize(self.size())
 
 
 class EditMenu(RoundMenu):
@@ -752,8 +852,15 @@ class OptionInterface(QWidget):
         arg.append(mode)
         arg.append(str(isDelete))
         arg.append(commandOption)
-        subprocess.Popen(arg, shell=True)
-        sys.exit()
+        if os.path.exists('PrestoMain.exe'):
+            subprocess.Popen(arg, shell=True)
+            sys.exit()
+        else:
+            self.window().hide()
+            w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+            w.yesButton.setText("确定")
+            if w.exec():
+                sys.exit()
 
     def onLatelyCopyAction(self):
         w = LatelyCopyMessageBox(self.window())
@@ -918,7 +1025,7 @@ class MainWindow(MicaWindow):
         menu.addWidget(card, selectable=False)
         menu.addSeparator()
         settingAction = Action(FIF.SETTING, '设置')
-        settingAction.triggered.connect(lambda: subprocess.Popen("PrestoSetting.exe", shell=True))
+        settingAction.triggered.connect(self.openSetting)
         menu.addAction(settingAction)
         helpAction = Action(FIF.HELP, '帮助')
         helpAction.triggered.connect(self.onHelpAction)
@@ -926,6 +1033,15 @@ class MainWindow(MicaWindow):
         menu.addSeparator()
         menu.addAction(Action(FIF.CLOSE, '关闭'))
         menu.exec(QPoint(self.x() + self.askInterface.infoBtn.x() - 315, self.y() + self.askInterface.infoBtn.y() - 55))
+
+    def openSetting(self):
+        if os.path.exists('PrestoSetting.exe'):
+            subprocess.Popen("PrestoSetting.exe", shell=True)
+        else:
+            w = ErrorDialog("错误", "核心文件缺失，请尝试重新安装。Presto 将退出。")
+            w.yesButton.setText("确定")
+            if w.exec():
+                sys.exit()
 
     def onHelpAction(self):
         if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):

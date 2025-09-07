@@ -1105,7 +1105,7 @@ class HomeInterface(SmoothScrollArea):
     def recoverConfig(self):
         w = MessageBox(
             '恢复默认设置',
-            '是否要重置所有设置？',
+            '点击确定以重置所有设置为默认值。',
             self.window())
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
@@ -1119,7 +1119,7 @@ class HomeInterface(SmoothScrollArea):
     def openConfig(self):
         w = MessageBox(
             '打开配置文件',
-            '即将打开配置文件，请谨慎操作。',
+            '随意修改配置文件可能导致程序异常。点击确定以继续。',
             self.window())
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
