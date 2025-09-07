@@ -803,10 +803,9 @@ class MainWindow(MicaWindow):
         if self.isProgress:
             yesBtn = PushButton('确定')
             yesBtn.clicked.connect(self.stopThread)
-            msg = '取消同步？' if (mode == 1 or mode == 2) else '取消复制？'
             w = InfoBar(icon=InfoBarIcon.WARNING,
-                        title='',
-                        content=msg,
+                        title='取消此次任务',
+                        content='',
                         orient=Qt.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.BOTTOM,

@@ -888,44 +888,59 @@ class Window(MicaWindow):
                 pass
 
     def onUsbScanBtn(self):
+        self.usbScanBtn.setDisabled(True)
         if self.getStatus():
             self.successInfoBar = InfoBar.success(
-                title='',
-                content="U盘扫描已开启",
+                title='U盘扫描已开启',
+                content='',
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=-1,
                 parent=self
             )
-            stopBtn = PushButton("停止")
+            stopBtn = PushButton("停止", self.successInfoBar)
             stopBtn.clicked.connect(self.onInfoBarStopBtn)
             self.successInfoBar.addWidget(stopBtn)
+            self.successInfoBar.closeButton.clicked.connect(self.onSuccessInfoBarCloseBtn)
             self.successInfoBar.show()
         else:
             self.warningInfoBar = InfoBar.warning(
-                title='',
-                content="U盘扫描未开启",
+                title='U盘扫描未开启',
+                content='',
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=-1,
                 parent=self
             )
-            startBtn = PushButton("开启")
+            startBtn = PushButton("开启", self.warningInfoBar)
             startBtn.clicked.connect(self.onInfoBarStartBtn)
             self.warningInfoBar.addWidget(startBtn)
+            self.warningInfoBar.closeButton.clicked.connect(self.onWarningInfoBarCloseBtn)
             self.warningInfoBar.show()
 
     def onInfoBarStopBtn(self):
         self.successInfoBar.close()
         self.successInfoBar.deleteLater()
+        self.usbScanBtn.setDisabled(False)
         self.killProcess("PrestoScan.exe")
 
     def onInfoBarStartBtn(self):
         self.warningInfoBar.close()
         self.warningInfoBar.deleteLater()
+        self.usbScanBtn.setDisabled(False)
         subprocess.Popen("PrestoScan.exe --force-start", shell=True)
+
+    def onWarningInfoBarCloseBtn(self):
+        self.warningInfoBar.close()
+        self.warningInfoBar.deleteLater()
+        self.usbScanBtn.setDisabled(False)
+
+    def onSuccessInfoBarCloseBtn(self):
+        self.successInfoBar.close()
+        self.successInfoBar.deleteLater()
+        self.usbScanBtn.setDisabled(False)
 
     def onChooseBtn(self):
         folder = QFileDialog.getExistingDirectory(self, "选择驱动器", "./")
@@ -941,8 +956,8 @@ class Window(MicaWindow):
             sys.exit()
         else:
             w = InfoBar(icon=InfoBarIcon.WARNING,
-                        title='',
-                        content='未选择盘符',
+                        title='未选择盘符',
+                        content='',
                         orient=Qt.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.BOTTOM,

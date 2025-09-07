@@ -180,20 +180,13 @@ class MessageBoxBase(MaskDialogBase):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-        self.isDelete = None
-        self.menu = RoundMenu(parent=self)
-        self.passDeleteAction = Action(FIF.ACCEPT, '保留原有文件')
-        self.deleteAction = Action(FIF.DELETE, '删除原有文件')
-        self.menu.addAction(self.passDeleteAction)
-        self.menu.addAction(self.deleteAction)
-
         self.buttonGroup = QFrame(self.widget)
-        self.yesButton = PrimaryDropDownPushButton('确定', self.buttonGroup)
-        self.yesButton.setMenu(self.menu)
+        self.yesButton = PrimaryPushButton('确定', self.buttonGroup)
         self.cancelButton = QPushButton('取消', self.buttonGroup)
 
         self.vBoxLayout = QVBoxLayout(self.widget)
         self.viewLayout = QVBoxLayout()
+        self.viewLayout.setContentsMargins(0, 0, 0, 0)
         self.buttonLayout = QHBoxLayout(self.buttonGroup)
 
         self.__initWidget()
@@ -213,8 +206,7 @@ class MessageBoxBase(MaskDialogBase):
         self.yesButton.setFocus()
         self.buttonGroup.setFixedHeight(81)
 
-        self.passDeleteAction.triggered.connect(self.__onPassDeleteActionClicked)
-        self.deleteAction.triggered.connect(self.__onDeleteActionClicked)
+        self.yesButton.clicked.connect(self.__onYesButtonClicked)
         self.cancelButton.clicked.connect(self.__onCancelButtonClicked)
 
     def __initLayout(self):
@@ -234,21 +226,11 @@ class MessageBoxBase(MaskDialogBase):
         self.buttonLayout.addWidget(self.yesButton, 1, Qt.AlignVCenter)
         self.buttonLayout.addWidget(self.cancelButton, 1, Qt.AlignVCenter)
 
-    def validate(self) -> bool:
-        return True
-
     def __onCancelButtonClicked(self):
         self.reject()
 
-    def __onPassDeleteActionClicked(self):
-        if self.validate():
-            self.isDelete = False
-            self.accept()
-
-    def __onDeleteActionClicked(self):
-        if self.validate():
-            self.isDelete = True
-            self.accept()
+    def __onYesButtonClicked(self):
+        self.accept()
 
     def __setQss(self):
         self.buttonGroup.setObjectName('buttonGroup')
@@ -468,6 +450,9 @@ class LatelyCopyMessageBox(MessageBoxBase):
         self.spinBox.setAccelerated(True)
         self.spinBox.setValue(7)
         self.spinBox.setMinimum(1)
+        self.deleteCheckBox = CheckBox(self)
+        self.deleteCheckBox.setText("删除原有文件")
+        self.deleteCheckBox.setChecked(False)
 
         self.spinLayout = QHBoxLayout(self)
         self.spinLayout.addWidget(self.textLabel)
@@ -475,6 +460,7 @@ class LatelyCopyMessageBox(MessageBoxBase):
 
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addLayout(self.spinLayout)
+        self.viewLayout.addWidget(self.deleteCheckBox)
 
 
 class DateCopyMessageBox(MessageBoxBase):
@@ -494,9 +480,15 @@ class DateCopyMessageBox(MessageBoxBase):
         self.fromLayout.addWidget(self.fromDate)
         self.toLayout.addWidget(self.toLabel)
         self.toLayout.addWidget(self.toDate)
+
+        self.deleteCheckBox = CheckBox(self)
+        self.deleteCheckBox.setText("删除原有文件")
+        self.deleteCheckBox.setChecked(False)
+
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addLayout(self.fromLayout)
         self.viewLayout.addLayout(self.toLayout)
+        self.viewLayout.addWidget(self.deleteCheckBox)
 
 
 class OptionInterface(QWidget):
@@ -766,7 +758,7 @@ class OptionInterface(QWidget):
     def onLatelyCopyAction(self):
         w = LatelyCopyMessageBox(self.window())
         if w.exec():
-            self.onSyncAction(f"/from_date=-{w.spinBox.value()}D", w.isDelete, '3')
+            self.onSyncAction(f"/from_date=-{w.spinBox.value()}D", w.deleteCheckBox.isChecked(), '3')
             sys.exit()
 
     def onDateCopyAction(self):
@@ -781,7 +773,7 @@ class OptionInterface(QWidget):
             if w.fromDate.date > w.toDate.date:
                 w.fromDate.setDate(w.toDate.date)
 
-            self.onSyncAction(f"/from_date={w.fromDate.date.toString('yyyyMMdd')} /to_date={w.toDate.date.toString('yyyyMMdd')}", w.isDelete, '4')
+            self.onSyncAction(f"/from_date={w.fromDate.date.toString('yyyyMMdd')} /to_date={w.toDate.date.toString('yyyyMMdd')}", w.deleteCheckBox.isChecked(), '4')
             sys.exit()
 
 
