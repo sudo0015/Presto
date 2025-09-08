@@ -627,7 +627,10 @@ class MainWindow(MicaWindow):
 
     def __init__(self):
         super().__init__()
-        setThemeColor(QColor(113, 89, 249))
+        if isDarkTheme():
+            setThemeColor(QColor(113, 89, 249))
+        else:
+            setThemeColor(QColor(90, 51, 174))
         self.driveName = self.getDriveName() + ' (' + drive + ')'
 
         self.resize(550, 150)
@@ -1027,7 +1030,7 @@ if __name__ == '__main__':
     """
 
     try:
-        drive = sys.argv[1]
+        drive = sys.argv[1][0] + ':'
         taskList = []
         for i in range(2, 13):
             if sys.argv[i] == '1':

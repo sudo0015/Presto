@@ -946,7 +946,10 @@ class MainWindow(MicaWindow):
         super().__init__()
         self.isClicked = False
         self.opacity = 0.98
-        setThemeColor(QColor(113, 89, 249))
+        if isDarkTheme():
+            setThemeColor(QColor(113, 89, 249))
+        else:
+            setThemeColor(QColor(90, 51, 174))
         self.setWindowTitle("Presto")
         self.setWindowIcon(QIcon(':/icon.png'))
         self.setWindowOpacity(self.opacity)
@@ -1076,7 +1079,7 @@ if __name__ == '__main__':
     try:
         if len(sys.argv) != 2:
             sys.exit()
-        drive = sys.argv[1]
+        drive = sys.argv[1][0] + ':'
     except:
         sys.exit()
 

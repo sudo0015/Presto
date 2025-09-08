@@ -1091,7 +1091,7 @@ class HomeInterface(SmoothScrollArea):
     def clearCache(self):
         w = MessageBox(
             '清除缓存',
-            '缓存包含日志文件，是否清除？',
+            '缓存包含日志文件。点击确定以继续。',
             self.window())
         w.yesButton.setText('确定')
         w.cancelButton.setText('取消')
@@ -1494,7 +1494,10 @@ class Main(MSFluentWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        setThemeColor(QColor(113, 89, 249))
+        if isDarkTheme():
+            setThemeColor(QColor(113, 89, 249))
+        else:
+            setThemeColor(QColor(90, 51, 174))
         self.resize(800, 600)
         self.setWindowTitle('Presto 设置')
         self.setWindowIcon(QIcon(':/icon.png'))

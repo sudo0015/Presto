@@ -887,7 +887,10 @@ class EditableComboBox(LineEdit, ComboBoxBase):
 class Window(MicaWindow):
     def __init__(self):
         super().__init__()
-        setThemeColor(QColor(113, 89, 249))
+        if isDarkTheme():
+            setThemeColor(QColor(113, 89, 249))
+        else:
+            setThemeColor(QColor(90, 51, 174))
         self.titleBar.raise_()
         self.setWindowTitle('Presto 启动台')
         self.setWindowIcon(QIcon(':/icon.png'))

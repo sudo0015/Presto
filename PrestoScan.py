@@ -404,7 +404,10 @@ class MainWindow(QMainWindow):
 
 class TrayApp:
     def __init__(self):
-        setThemeColor(QColor(113, 89, 249))
+        if isDarkTheme():
+            setThemeColor(QColor(113, 89, 249))
+        else:
+            setThemeColor(QColor(90, 51, 174))
         self.app = QApplication(sys.argv)
         self.main_window = MainWindow()
         self._restore_action = QAction()
