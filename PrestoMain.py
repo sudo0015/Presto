@@ -564,7 +564,7 @@ class SyncThread(QThread):
                 elif currentTask == 11:
                     currentFolder = cfg.ziliaoFolder.value
 
-                args = f'fcp.exe /cmd=sync /bufsize={buf} /log=FALSE /skip_empty_dir=FALSE /no_confirm_stop /error_stop=FALSE /force_start={concurrentProcess} {commandOption} "' + currentFolder.replace('/', '\\') + f'" /to="{destFolder}"'
+                args = f'fcp.exe /cmd=sync /log=FALSE /no_confirm_stop /error_stop=FALSE /bufsize={buf} /force_start={concurrentProcess} {commandOption} "' + currentFolder.replace('/', '\\') + f'" /to="{destFolder}"'
                 if os.path.exists('fcp.exe'):
                     self.process = subprocess.Popen(args, shell=True)
                     self.process.wait()
@@ -996,6 +996,8 @@ class MainWindow(MicaWindow):
 
     def onEjectBtn(self):
         self.timer.stop()
+        self.statusLabel.setDisabled(True)
+        self.detailLabel.setDisabled(True)
         self.ejectBtn.setDisabled(True)
         self.finishBtn.setDisabled(True)
         self.viewBtn.setDisabled(True)
@@ -1042,7 +1044,15 @@ if __name__ == '__main__':
         destFolder = drive + '\\' + os.path.basename(sourceFolder) + '\\'
         mode = int(sys.argv[13])
         isDelete = False if sys.argv[14] == 'False' else True
+
         commandOption = sys.argv[15]
+        if cfg.IsSkipEmptyDir.value:
+            commandOption = commandOption + " /skip_empty_dir"
+        else:
+            commandOption = commandOption + " /skip_empty_dir=FALSE"
+        if cfg.IsSizeFilter.value:
+            commandOption = commandOption + f' /max_size="{cfg.SizeFilterValue.value}{cfg.SizeFilterUnit.value[0]}"'
+
         currentTask = 0
     except:
         sys.exit()

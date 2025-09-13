@@ -1013,7 +1013,7 @@ class MainWindow(MicaWindow):
         sectorsPerCluster, bytesPerSector, numFreeClusters, totalNumClusters = GetDiskFreeSpace(drive)
         freeSpace = format((numFreeClusters * sectorsPerCluster * bytesPerSector) / 1024 / 1024 / 1024, '.1f')
         totalSpace = format((sectorsPerCluster * bytesPerSector * totalNumClusters) / 1024 / 1024 / 1024, '.1f')
-        return freeSpace + 'GB可用，共' + totalSpace + 'GB'
+        return freeSpace + 'GB 可用，共 ' + totalSpace + 'GB'
 
     def getDriveRatio(self):
         sectorsPerCluster, bytesPerSector, numFreeClusters, totalNumClusters = GetDiskFreeSpace(drive)

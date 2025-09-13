@@ -38,8 +38,22 @@ class Config(QConfig):
     BufSize = OptionsConfigItem("MainWindow", "BufSize", BufSize._256, OptionsValidator(BufSize), EnumSerializer(BufSize))
     dpiScale = OptionsConfigItem("MainWindow", "DpiScale", "Auto", OptionsValidator([1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
 
+    IsSkipEmptyDir = OptionsConfigItem("Filter", "IsSkipEmptyDir", False, BoolValidator())
+    IsSizeFilter = OptionsConfigItem("Filter", "IsSizeFilter", False, BoolValidator())
+    SizeFilterUnit = OptionsConfigItem("Filter", "SizeFilterUnit", "GB", OptionsValidator(["KB", "MB", "GB"]))
+    SizeFilterValue = ConfigItem("Filter", "SizeFilterValue", 1, RangeValidator(1, 1024))
+    IsTypeFilter = OptionsConfigItem("Filter", "IsTypeFilter", False, BoolValidator())
+    TypeFilterMode = OptionsConfigItem("Filter", "TypeFilterMode", "Exclude", OptionsValidator(["Exclude", "Include"]))
+    IsDocument = OptionsConfigItem("Filter", "IsDocument", False, BoolValidator())
+    IsPicture = OptionsConfigItem("Filter", "IsPicture", False, BoolValidator())
+    IsAudio = OptionsConfigItem("Filter", "IsAudio", False, BoolValidator())
+    IsVideo = OptionsConfigItem("Filter", "IsVideo", False, BoolValidator())
+    IsApplication = OptionsConfigItem("Filter", "IsApplication", False, BoolValidator())
+    IsZipFile = OptionsConfigItem("Filter", "IsZipFile", False, BoolValidator())
+    IsCustom = OptionsConfigItem("Filter", "IsCustom", False, BoolValidator())
+
 
 YEAR = "2025"
-VERSION = "7.2.1"
+VERSION = "7.3.0"
 cfg = Config()
 qconfig.load(os.path.join(os.path.expanduser('~'), '.Presto', 'config', 'config.json'), cfg)

@@ -6,12 +6,13 @@ import darkdetect
 import subprocess
 import portalocker
 import PrestoResource
+from enum import Enum
 from typing import Union
 from webbrowser import open as WebOpen
 from PrestoConfig import cfg, BufSize, VERSION, YEAR
 from pygetwindow import getWindowsWithTitle as GetWindow
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QThread, QRectF, QEasingCurve, QEvent
-from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath
+from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QCursor
 from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QFileDialog, QLabel, QVBoxLayout, \
     QPushButton, QButtonGroup, QTextBrowser, QTextEdit, QSizePolicy, QLineEdit, QSpinBox, QScrollArea, \
     QScroller, QAction
@@ -19,9 +20,9 @@ from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, Ex
     SettingCardGroup, RadioButton, ExpandSettingCard, ComboBox, SwitchButton, IndicatorPosition, qconfig, \
     isDarkTheme, ConfigItem, OptionsConfigItem, FluentStyleSheet, HyperlinkButton, Slider, IconWidget, drawIcon, \
     setThemeColor, ImageLabel, MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, \
-    NavigationBar, NavigationBarPushButton, BodyLabel, InfoBadge, SplashScreen
+    NavigationBar, NavigationBarPushButton, BodyLabel, InfoBadge, SplashScreen, InfoBarIcon, PushButton, TextWrap
 from qfluentwidgets.components.widgets.line_edit import EditLayer
-from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu
+from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu, CheckableMenu, MenuIndicatorType
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
 from qfluentwidgets.window.fluent_window import FluentWindowBase
 from qframelesswindow.titlebar import MinimizeButton, CloseButton, MaximizeButton
@@ -721,6 +722,235 @@ class OptionsSettingCard(ExpandSettingCard):
                 self.choiceLabel.setText(button.text())
 
 
+class SizeFilterItem(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.hBoxLayout = QHBoxLayout(self)
+        self.titleLabel = QLabel("最大文件大小", self)
+        if darkdetect.isDark():
+            self.titleLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
+        else:
+            self.titleLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
+
+        self.spinBox = SpinBox(self)
+        self.spinBox.setFixedWidth(130)
+        self.spinBox.setAccelerated(True)
+        self.spinBox.setMinimum(1)
+        self.spinBox.setMaximum(1024)
+        self.spinBox.setValue(cfg.SizeFilterValue.value)
+        self.spinBox.valueChanged.connect(self.setValue)
+        self.unitBtn = HyperlinkButton(self)
+        self.unitBtn.setText(cfg.SizeFilterUnit.value)
+        self.unitBtn.setFixedWidth(50)
+        self.unitBtn.clicked.connect(self.onUnitBtn)
+        self.KbAction = QAction("KB", self)
+        self.MbAction = QAction("MB", self)
+        self.GbAction = QAction("GB", self)
+        self.KbAction.setCheckable(True)
+        self.MbAction.setCheckable(True)
+        self.GbAction.setCheckable(True)
+        self.KbAction.triggered.connect(self.onKbAction)
+        self.MbAction.triggered.connect(self.onMbAction)
+        self.GbAction.triggered.connect(self.onGbAction)
+        self.unitMenu = CheckableMenu(parent=self.unitBtn, indicatorType=MenuIndicatorType.RADIO)
+        self.unitMenu.addAction(self.KbAction)
+        self.unitMenu.addAction(self.MbAction)
+        self.unitMenu.addAction(self.GbAction)
+        self.updateStatus()
+
+        self.setFixedHeight(68)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.hBoxLayout.setContentsMargins(48, 0, 32, 0)
+        self.hBoxLayout.addWidget(self.titleLabel, 0, Qt.AlignLeft)
+        self.hBoxLayout.addSpacing(16)
+        self.hBoxLayout.addStretch(1)
+        self.hBoxLayout.addWidget(self.spinBox, 0, Qt.AlignRight)
+        self.hBoxLayout.addWidget(self.unitBtn, 0, Qt.AlignRight)
+        self.hBoxLayout.setAlignment(Qt.AlignVCenter)
+
+    def setValue(self):
+        cfg.set(cfg.SizeFilterValue, self.spinBox.value())
+
+    def updateStatus(self):
+        if cfg.SizeFilterUnit.value == 'KB':
+            self.unitMenu.actions()[0].setChecked(True)
+        elif cfg.SizeFilterUnit.value == 'MB':
+            self.unitMenu.actions()[1].setChecked(True)
+        elif cfg.SizeFilterUnit.value == 'GB':
+            self.unitMenu.actions()[2].setChecked(True)
+
+    def onUnitBtn(self):
+        self.unitMenu.exec(QCursor.pos())
+
+    def onKbAction(self):
+        self.unitMenu.actions()[0].setChecked(True)
+        self.unitMenu.actions()[1].setChecked(False)
+        self.unitMenu.actions()[2].setChecked(False)
+        self.unitBtn.setText('KB')
+        cfg.set(cfg.SizeFilterUnit, 'KB')
+
+    def onMbAction(self):
+        self.unitMenu.actions()[0].setChecked(False)
+        self.unitMenu.actions()[1].setChecked(True)
+        self.unitMenu.actions()[2].setChecked(False)
+        self.unitBtn.setText('MB')
+        cfg.set(cfg.SizeFilterUnit, 'MB')
+
+    def onGbAction(self):
+        self.unitMenu.actions()[0].setChecked(False)
+        self.unitMenu.actions()[1].setChecked(False)
+        self.unitMenu.actions()[2].setChecked(True)
+        self.unitBtn.setText('GB')
+        cfg.set(cfg.SizeFilterUnit, 'GB')
+
+
+class SizeFilterSettingCard(ExpandSettingCard):
+
+    def __init__(self, title: str, content: str = None, parent=None):
+        super().__init__(FIF.FILTER, title, content, parent)
+        self.switchBtn = SwitchButton(self, IndicatorPosition.RIGHT)
+        self.switchBtn.setChecked(cfg.IsSizeFilter.value)
+        self.switchBtn.setText('开' if cfg.IsSizeFilter.value else '关')
+        self.sizeFilterItem = SizeFilterItem(self)
+
+        self.__initWidget()
+
+    def __initWidget(self):
+        self.addWidget(self.switchBtn)
+
+        self.viewLayout.setSpacing(0)
+        self.viewLayout.setAlignment(Qt.AlignTop)
+        self.viewLayout.setContentsMargins(0, 0, 0, 0)
+        self.viewLayout.addWidget(self.sizeFilterItem)
+
+        self.switchBtn.checkedChanged.connect(self.onSwitchBtnChecked)
+
+    def onSwitchBtnChecked(self):
+        self.switchBtn.setText('开' if self.switchBtn.isChecked() else '关')
+        cfg.set(cfg.IsSizeFilter, self.switchBtn.isChecked())
+
+
+class TypeFilterModeItem(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.hBoxLayout = QHBoxLayout(self)
+        self.titleLabel = QLabel("过滤模式", self)
+        if darkdetect.isDark():
+            self.titleLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
+        else:
+            self.titleLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
+
+        self.comboItems = ["排除", "包含"]
+        self.currentIndex = 0 if cfg.TypeFilterMode.value == "Exclude" else 1
+        self.modeComboBox = ComboBox(self)
+        self.modeComboBox.setPlaceholderText("选择过滤模式")
+        self.modeComboBox.addItems(self.comboItems)
+        self.modeComboBox.setCurrentIndex(self.currentIndex)
+        self.modeComboBox.currentIndexChanged.connect(self.onModeChanged)
+
+        self.setFixedHeight(68)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.hBoxLayout.setContentsMargins(48, 0, 32, 0)
+        self.hBoxLayout.addWidget(self.titleLabel, 0, Qt.AlignLeft)
+        self.hBoxLayout.addSpacing(16)
+        self.hBoxLayout.addStretch(1)
+        self.hBoxLayout.addWidget(self.modeComboBox, 0, Qt.AlignRight)
+        self.hBoxLayout.setAlignment(Qt.AlignVCenter)
+
+    def onModeChanged(self):
+        if self.modeComboBox.currentIndex() == 0:
+            cfg.set(cfg.TypeFilterMode, "Exclude")
+        elif self.modeComboBox.currentIndex() == 1:
+            cfg.set(cfg.TypeFilterMode, "Include")
+
+
+class TypeFilterItem(QWidget):
+
+    def __init__(self, configItem: ConfigItem, icon: Union[str, QIcon, FIF], title, content=None, parent=None):
+        super().__init__(parent=parent)
+        self.config = configItem
+        self.iconLabel = SettingIconWidget(icon, self)
+        self.titleLabel = QLabel(title, self)
+        self.contentLabel = QLabel(content, self)
+        self.setFixedHeight(70)
+        self.iconLabel.setFixedSize(16, 16)
+        if darkdetect.isDark():
+            self.titleLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
+            self.contentLabel.setStyleSheet("font: 11px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: rgb(208, 208, 208);")
+        else:
+            self.titleLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
+            self.contentLabel.setStyleSheet("font: 11px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: rgb(96, 96, 96);")
+
+        self.switchBtn = SwitchButton(self, IndicatorPosition.RIGHT)
+        self.switchBtn.setChecked(self.config.value)
+        self.switchBtn.setOnText('')
+        self.switchBtn.setOffText('')
+        self.switchBtn.checkedChanged.connect(self.onSwitchBtnChanged)
+
+        self.hBoxLayout = QHBoxLayout(self)
+        self.vBoxLayout = QVBoxLayout()
+        self.hBoxLayout.setSpacing(0)
+        self.hBoxLayout.setContentsMargins(48, 0, 32, 0)
+        self.hBoxLayout.setAlignment(Qt.AlignVCenter)
+        self.vBoxLayout.setSpacing(0)
+        self.vBoxLayout.setContentsMargins(0, 0, 0, 0)
+        self.vBoxLayout.setAlignment(Qt.AlignVCenter)
+
+        self.hBoxLayout.addWidget(self.iconLabel, 0, Qt.AlignLeft)
+        self.hBoxLayout.addSpacing(16)
+
+        self.hBoxLayout.addLayout(self.vBoxLayout)
+        self.vBoxLayout.addWidget(self.titleLabel, 0, Qt.AlignLeft)
+        self.vBoxLayout.addWidget(self.contentLabel, 0, Qt.AlignLeft)
+
+        self.hBoxLayout.addSpacing(16)
+        self.hBoxLayout.addStretch(1)
+        self.hBoxLayout.addWidget(self.switchBtn, 0, Qt.AlignRight)
+
+    def onSwitchBtnChanged(self):
+        cfg.set(self.config, self.switchBtn.isChecked())
+
+
+class TypeFilterSettingCard(ExpandSettingCard):
+
+    def __init__(self, title: str, content: str = None, parent=None):
+        super().__init__(FIF.MEDIA, title, content, parent)
+        self.switchBtn = SwitchButton(self, IndicatorPosition.RIGHT)
+        self.switchBtn.setChecked(cfg.IsTypeFilter.value)
+        self.switchBtn.setText('开' if cfg.IsTypeFilter.value else '关')
+
+        self.typeFilterModeItem = TypeFilterModeItem(self)
+        self.documentItem = TypeFilterItem(cfg.IsDocument, FIF.DOCUMENT, "文档", ".pdf, .doc, .docx, .ppt, .pptx, .txt")
+        self.pictureItem = TypeFilterItem(cfg.IsPicture, FIF.PHOTO, "图片", ".jpg, .jpeg, .png, .gif, .bmp, .svg, .webp")
+        self.audioItem = TypeFilterItem(cfg.IsAudio, FIF.MUSIC, "音频", ".mp3, .wav, .flac, .ape, .acc, .ogg, .wma")
+        self.videoItem = TypeFilterItem(cfg.IsVideo, FIF.VIDEO, "视频", ".mp4, .avi, .mov, .wmv, .mkv")
+        self.applicationItem = TypeFilterItem(cfg.IsApplication, FIF.APPLICATION, "应用", ".exe, .dll, .msi, .bat, .cmd")
+        self.zipFileItem = TypeFilterItem(cfg.IsZipFile, FIF.ZIP_FOLDER, "压缩文件", ".zip, .rar, .7z, .iso")
+
+        self.__initWidget()
+
+    def __initWidget(self):
+        self.addWidget(self.switchBtn)
+
+        self.viewLayout.setSpacing(0)
+        self.viewLayout.setAlignment(Qt.AlignTop)
+        self.viewLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.viewLayout.addWidget(self.typeFilterModeItem)
+        self.viewLayout.addWidget(self.documentItem)
+        self.viewLayout.addWidget(self.pictureItem)
+        self.viewLayout.addWidget(self.audioItem)
+        self.viewLayout.addWidget(self.videoItem)
+        self.viewLayout.addWidget(self.applicationItem)
+        self.viewLayout.addWidget(self.zipFileItem)
+
+        self.switchBtn.checkedChanged.connect(self.onSwitchBtnChecked)
+
+    def onSwitchBtnChecked(self):
+        self.switchBtn.setText('开' if self.switchBtn.isChecked() else '关')
+        cfg.set(cfg.IsTypeFilter, self.switchBtn.isChecked())
+
+
 class FolderItem(QWidget):
     def __init__(self, folder: str, parent=None):
         super().__init__(parent=parent)
@@ -748,9 +978,9 @@ class FolderItem(QWidget):
     def setFolder(self, text):
         self.folderLabel.setText(text[4:])
         if darkdetect.isDark():
-            self.folderLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
+            self.folderLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
         else:
-            self.folderLabel.setStyleSheet("font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
+            self.folderLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
 
 
 class CustomFolderListSettingCard(ExpandSettingCard):
@@ -871,6 +1101,124 @@ class CustomFolderListSettingCard(ExpandSettingCard):
         self.ziliaoItem.setFolder("资料: " + cfg.ziliaoFolder.value)
 
 
+class InfoIconWidget(QWidget):
+    """ Icon widget """
+
+    def __init__(self, icon: InfoBarIcon, parent=None):
+        super().__init__(parent=parent)
+        self.setFixedSize(36, 36)
+        self.icon = icon
+
+    def paintEvent(self, e):
+        painter = QPainter(self)
+        painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+        rect = QRectF(10, 10, 15, 15)
+        if self.icon:
+            drawIcon(self.icon, painter, rect)
+
+
+class InformationBar(QFrame):
+
+    def __init__(self, title: str, content: str, parent=None):
+        super().__init__(parent=parent)
+        self.title = title
+        self.content = content
+        self.icon = InfoBarIcon.INFORMATION
+
+        self.titleLabel = QLabel(self)
+        self.contentLabel = QLabel(self)
+        self.titleLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.contentLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.iconWidget = InfoIconWidget(self.icon)
+        self.helpBtn = PushButton("详情", self)
+        self.helpBtn.clicked.connect(self.onHelpAction)
+
+        self.hBoxLayout = QHBoxLayout(self)
+        self.textLayout = QHBoxLayout()
+        self.widgetLayout = QHBoxLayout()
+
+        self.lightBackgroundColor = QColor(211, 231, 247)
+        self.darkBackgroundColor = QColor(52, 66, 77)
+
+        self.__setQss()
+        self.__initLayout()
+
+    def onHelpAction(self):
+        if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
+            os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
+        else:
+            WebOpen("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
+
+    def __initLayout(self):
+        self.hBoxLayout.setContentsMargins(6, 6, 6, 6)
+        self.hBoxLayout.setSizeConstraint(QVBoxLayout.SetMinimumSize)
+        self.textLayout.setSizeConstraint(QHBoxLayout.SetMinimumSize)
+        self.textLayout.setAlignment(Qt.AlignTop)
+        self.textLayout.setContentsMargins(1, 8, 0, 8)
+
+        self.hBoxLayout.setSpacing(0)
+        self.textLayout.setSpacing(5)
+        self.hBoxLayout.addWidget(self.iconWidget, 0, Qt.AlignTop | Qt.AlignLeft)
+
+        self.titleLabel.setVisible(bool(self.title))
+        self.contentLabel.setVisible(bool(self.content))
+        self.textLayout.addWidget(self.titleLabel, 1, Qt.AlignLeft | Qt.AlignTop)
+        self.textLayout.addSpacing(7)
+        self.textLayout.addWidget(self.contentLabel, 1, Qt.AlignLeft | Qt.AlignTop)
+        self.widgetLayout.addWidget(self.helpBtn)
+
+        self.hBoxLayout.addLayout(self.textLayout)
+        self.hBoxLayout.addLayout(self.widgetLayout)
+        self.widgetLayout.setSpacing(10)
+        self.hBoxLayout.addSpacing(12)
+
+        self._adjustText()
+
+    def __setQss(self):
+        self.titleLabel.setObjectName('titleLabel')
+        self.contentLabel.setObjectName('contentLabel')
+        if isinstance(self.icon, Enum):
+            self.setProperty('type', self.icon.value)
+
+        FluentStyleSheet.INFO_BAR.apply(self)
+
+    def _adjustText(self):
+        w = 900 if not self.parent() else (self.parent().width() - 50)
+        self.titleLabel.setText(TextWrap.wrap(self.title, 80, False)[0])
+        self.contentLabel.setText(TextWrap.wrap(self.content, 80, False)[0])
+        self.adjustSize()
+
+    def addWidget(self, widget: QWidget, stretch=0):
+        """ add widget to info bar """
+        self.widgetLayout.addSpacing(6)
+        self.widgetLayout.addWidget(widget, stretch, Qt.AlignLeft | Qt.AlignTop)
+
+    def eventFilter(self, obj, e: QEvent):
+        if obj is self.parent():
+            if e.type() in [QEvent.Resize, QEvent.WindowStateChange]:
+                self._adjustText()
+
+        return super().eventFilter(obj, e)
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        if self.lightBackgroundColor is None:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHints(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+
+        if isDarkTheme():
+            painter.setBrush(self.darkBackgroundColor)
+        else:
+            painter.setBrush(self.lightBackgroundColor)
+
+        rect = self.rect().adjusted(1, 1, -1, -1)
+        painter.drawRoundedRect(rect, 6, 6)
+
+
 class ClearCache(QThread):
     isFinished = pyqtSignal(bool)
     def __init__(self):
@@ -904,6 +1252,7 @@ class HomeInterface(SmoothScrollArea):
         self.sourceGroup = SettingCardGroup('源', self.scrollWidget)
         self.actGroup = SettingCardGroup('行为', self.scrollWidget)
         self.performanceGroup = SettingCardGroup('性能', self.scrollWidget)
+        self.filterGroup = SettingCardGroup('文件过滤', self.scrollWidget)
         self.storageGroup = SettingCardGroup('存储', self.scrollWidget)
         self.advanceGroup = SettingCardGroup('高级', self.scrollWidget)
         self.optionSourceCard = ComboBoxSettingCard(
@@ -952,6 +1301,21 @@ class HomeInterface(SmoothScrollArea):
             '缓冲区大小',
             texts=['32 MB', '64 MB', '128 MB', '256 MB', '512 MB', '1 GB'],
             parent=self.performanceGroup)
+        self.infoBar = InformationBar(title="", content="以下选项会对所有任务产生直接而现实的影响", parent=self.filterGroup)
+        self.isSkipEmptyDirCard = SwitchSettingCard(
+            FIF.REMOVE_FROM,
+            "跳过空文件夹",
+            "不复制空文件夹",
+            configItem=cfg.IsSkipEmptyDir,
+            parent=self.filterGroup)
+        self.sizeFilterCard = SizeFilterSettingCard(
+            title='大小过滤',
+            content='过滤大于指定大小的文件',
+            parent=self.filterGroup)
+        self.typeFilterCard = TypeFilterSettingCard(
+            title='类型过滤',
+            content='排除或包含指定类型的文件',
+            parent=self.filterGroup)
         self.clearCard = PushSettingCard(
             '清除',
             FIF.BROOM,
@@ -1006,6 +1370,10 @@ class HomeInterface(SmoothScrollArea):
         self.performanceGroup.addSettingCard(self.scanCycleCard)
         self.performanceGroup.addSettingCard(self.concurrentProcessCard)
         self.performanceGroup.addSettingCard(self.bufSizeCard)
+        self.filterGroup.addSettingCard(self.infoBar)
+        self.filterGroup.addSettingCard(self.isSkipEmptyDirCard)
+        self.filterGroup.addSettingCard(self.sizeFilterCard)
+        self.filterGroup.addSettingCard(self.typeFilterCard)
         self.storageGroup.addSettingCard(self.clearCard)
         self.advanceGroup.addSettingCard(self.recoverCard)
         self.advanceGroup.addSettingCard(self.devCard)
@@ -1015,6 +1383,7 @@ class HomeInterface(SmoothScrollArea):
         self.expandLayout.addWidget(self.sourceGroup)
         self.expandLayout.addWidget(self.actGroup)
         self.expandLayout.addWidget(self.performanceGroup)
+        self.expandLayout.addWidget(self.filterGroup)
         self.expandLayout.addWidget(self.storageGroup)
         self.expandLayout.addWidget(self.advanceGroup)
 
@@ -1061,7 +1430,7 @@ class HomeInterface(SmoothScrollArea):
             self.customFolderCard.setVisible(True)
             self.sourceGroup.adjustSize()
 
-    def __onCloudCardClicked(self):
+    def onCloudCard(self):
         folder = QFileDialog.getExistingDirectory(self, "选择文件夹", "./")
         if not folder or cfg.get(cfg.sourceFolder) == folder:
             return
@@ -1115,6 +1484,8 @@ class HomeInterface(SmoothScrollArea):
             self.scanCycleCard.setValue(10)
             self.concurrentProcessCard.setValue(3)
             self.bufSizeCard.setValue(BufSize._256)
+            self.sizeFilterCard.switchBtn.setChecked(False)
+            cfg.set(cfg.IsSizeFilter, False)
 
     def openConfig(self):
         w = MessageBox(
@@ -1134,7 +1505,7 @@ class HomeInterface(SmoothScrollArea):
 
     def __connectSignalToSlot(self):
         self.optionSourceCard.comboBox.currentTextChanged.connect(self.onOptionSourceCard)
-        self.cloudCard.clicked.connect(self.__onCloudCardClicked)
+        self.cloudCard.clicked.connect(self.onCloudCard)
         self.clearCard.clicked.connect(self.clearCache)
         self.recoverCard.clicked.connect(self.recoverConfig)
         self.devCard.clicked.connect(self.openConfig)
