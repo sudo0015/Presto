@@ -36,7 +36,6 @@ class FluentFontIcon(FluentFontIconBase):
 
 
 class TitleBarBase(QWidget):
-    """ Title bar base class """
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -68,7 +67,6 @@ class TitleBarBase(QWidget):
         return super().eventFilter(obj, e)
 
     def mouseDoubleClickEvent(self, event):
-        """ Toggles the maximization state of the window """
         if event.button() != Qt.LeftButton or not self._isDoubleClickEnabled:
             return
 
@@ -87,7 +85,6 @@ class TitleBarBase(QWidget):
         startSystemMove(self.window(), e.globalPos())
 
     def __toggleMaxState(self):
-        """ Toggles the maximization state of the window and change icon """
         if self.window().isMaximized():
             self.window().showNormal()
         else:
@@ -98,7 +95,6 @@ class TitleBarBase(QWidget):
             releaseMouseLeftButton(self.window().winId())
 
     def _isDragRegion(self, pos):
-        """ Check whether the position belongs to the area where dragging is allowed """
         width = 0
         for button in self.findChildren(TitleBarButton):
             if button.isVisible():
@@ -107,20 +103,12 @@ class TitleBarBase(QWidget):
         return 0 < pos.x() < self.width() - width
 
     def _hasButtonPressed(self):
-        """ whether any button is pressed """
         return any(btn.isPressed() for btn in self.findChildren(TitleBarButton))
 
     def canDrag(self, pos):
-        """ whether the position is draggable """
         return self._isDragRegion(pos) and not self._hasButtonPressed()
 
     def setDoubleClickEnabled(self, isEnabled):
-        """ whether to switch window maximization status when double clicked
-        Parameters
-        ----------
-        isEnabled: bool
-            whether to enable double click
-        """
         self._isDoubleClickEnabled = isEnabled
 
 
@@ -179,7 +167,6 @@ class MicaWindow(Window):
 
 
 class MessageBoxBase(MaskDialogBase):
-    """ Message box base """
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -347,7 +334,6 @@ class ErrorDialog(FramelessDialog, UiErrorDialog):
 
 
 class EditMenu(RoundMenu):
-    """ Edit menu """
 
     def createActions(self):
         self.cutAct = QAction(
@@ -432,7 +418,6 @@ class EditMenu(RoundMenu):
 
 
 class LineEditMenu(EditMenu):
-    """ Line edit menu """
 
     def __init__(self, parent: QLineEdit):
         super().__init__("", parent)
@@ -456,7 +441,6 @@ class LineEditMenu(EditMenu):
 
 
 class SpinBoxBase:
-    """ Spin box ui """
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -477,7 +461,6 @@ class SpinBoxBase:
         self.setSymbolVisible(not isReadOnly)
 
     def setSymbolVisible(self, isVisible: bool):
-        """ set whether the spin symbol is visible """
         self.setProperty("symbolVisible", isVisible)
         self.setStyle(QApplication.style())
 
@@ -509,7 +492,6 @@ class SpinBoxBase:
 
 
 class InlineSpinBoxBase(SpinBoxBase):
-    """ Inline spin box base """
 
     def __init__(self, parent=None):
         super().__init__(parent)

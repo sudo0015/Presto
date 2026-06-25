@@ -12,15 +12,14 @@ from PrestoConfig import cfg, BufSize, VERSION, YEAR
 from pygetwindow import getWindowsWithTitle as GetWindow
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QThread, QRectF, QEasingCurve, QEvent, QUrl, QDir
 from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QCursor, QDesktopServices
-from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QFileDialog, QLabel, QVBoxLayout, \
-    QPushButton, QButtonGroup, QTextBrowser, QTextEdit, QSizePolicy, QLineEdit, QSpinBox, QScrollArea, \
-    QScroller, QAction
+from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QFileDialog, QLabel, QVBoxLayout, QGridLayout, \
+    QPushButton, QTextBrowser, QTextEdit, QSizePolicy, QLineEdit, QSpinBox, QScrollArea, QScroller, QAction
 from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, ExpandLayout, SettingCardGroup, \
     RadioButton, ExpandSettingCard, ComboBox, SwitchButton, IndicatorPosition, qconfig, isDarkTheme, ConfigItem, \
-    OptionsConfigItem, FluentStyleSheet, HyperlinkButton, Slider, IconWidget, drawIcon, setThemeColor, ImageLabel, \
-    MessageBoxBase, SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, NavigationBar, SplashScreen, \
-    InfoBarIcon, PushButton, TextWrap, TransparentToolButton, NavigationBarPushButton, TransparentDropDownPushButton, \
-    LineEdit, ToolTipFilter, ToolTipPosition, FluentFontIconBase, BodyLabel, InfoBar, InfoBarPosition
+    OptionsConfigItem, FluentStyleSheet, HyperlinkButton, Slider, IconWidget, drawIcon, setThemeColor, MessageBoxBase, \
+    SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, NavigationBar, SplashScreen, InfoBarIcon, \
+    PushButton, TextWrap, TransparentToolButton, NavigationBarPushButton, TransparentDropDownPushButton, LineEdit, \
+    ToolTipFilter, ToolTipPosition, FluentFontIconBase, BodyLabel, InfoBar, InfoBarPosition, CardWidget, ExpandGroupSettingCard
 from qfluentwidgets.components.widgets.line_edit import EditLayer, LineEditButton
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu, CheckableMenu, MenuIndicatorType
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
@@ -70,19 +69,6 @@ class SmoothScrollArea(QScrollArea):
         QScroller.grabGesture(self.viewport(), QScroller.TouchGesture)
 
     def setScrollAnimation(self, orient, duration, easing=QEasingCurve.OutCubic):
-        """ set scroll animation
-
-        Parameters
-        ----------
-        orient: Orient
-            scroll orientation
-
-        duration: int
-            scroll duration
-
-        easing: QEasingCurve
-            animation type
-        """
         bar = self.delegate.hScrollBar if orient == Qt.Horizontal else self.delegate.vScrollBar
         bar.setScrollAnimation(duration, easing)
 
@@ -94,7 +80,6 @@ class SmoothScrollArea(QScrollArea):
 
 
 class EditMenu(RoundMenu):
-    """ Edit menu """
 
     def createActions(self):
         self.cutAct = QAction(
@@ -178,7 +163,6 @@ class EditMenu(RoundMenu):
 
 
 class LineEditMenu(EditMenu):
-    """ Line edit menu """
 
     def __init__(self, parent: QLineEdit):
         super().__init__("", parent)
@@ -246,7 +230,6 @@ class CustomLineEdit(LineEdit):
 
 
 class SpinBoxBase:
-    """ Spin box ui """
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -267,7 +250,6 @@ class SpinBoxBase:
         self.setSymbolVisible(not isReadOnly)
 
     def setSymbolVisible(self, isVisible: bool):
-        """ set whether the spin symbol is visible """
         self.setProperty("symbolVisible", isVisible)
         self.setStyle(QApplication.style())
 
@@ -299,7 +281,6 @@ class SpinBoxBase:
 
 
 class InlineSpinBoxBase(SpinBoxBase):
-    """ Inline spin box base """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -355,19 +336,6 @@ class TextEditMenu(EditMenu):
         return super().exec(pos, ani, aniType)
 
 
-class TextBrowser(QTextBrowser):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.layer = EditLayer(self)
-        self.scrollDelegate = SmoothScrollDelegate(self)
-        FluentStyleSheet.LINE_EDIT.apply(self)
-        setFont(self)
-
-    def contextMenuEvent(self, e):
-        menu = TextEditMenu(self)
-        menu.exec(e.globalPos())
-
-
 class SettingIconWidget(IconWidget):
 
     def paintEvent(self, e):
@@ -382,21 +350,6 @@ class SettingIconWidget(IconWidget):
 
 class SettingCard(QFrame):
     def __init__(self, icon: Union[str, QIcon], title, content=None, parent=None):
-        """
-        Parameters
-        ----------
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
-
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        parent: QWidget
-            parent widget
-        """
         super().__init__(parent=parent)
         self.iconLabel = SettingIconWidget(icon, self)
         self.titleLabel = QLabel(title, self)
@@ -461,24 +414,6 @@ class SwitchSettingCard(SettingCard):
     checkedChanged = pyqtSignal(bool)
 
     def __init__(self, icon: Union[str, QIcon], title, content=None, configItem: ConfigItem = None, parent=None):
-        """
-        Parameters
-        ----------
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
-
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        configItem: ConfigItem
-            configuration item operated by the card
-
-        parent: QWidget
-            parent widget
-        """
         super().__init__(icon, title, content, parent)
         self.configItem = configItem
         self.switchButton = SwitchButton('关', self, IndicatorPosition.RIGHT)
@@ -514,24 +449,6 @@ class RangeSettingCard(SettingCard):
     valueChanged = pyqtSignal(int)
 
     def __init__(self, configItem, icon: Union[str, QIcon], title, content=None, parent=None):
-        """
-        Parameters
-        ----------
-        configItem: RangeConfigItem
-            configuration item operated by the card
-
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
-
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        parent: QWidget
-            parent widget
-        """
         super().__init__(icon, title, content, parent)
         self.configItem = configItem
         self.slider = Slider(Qt.Horizontal, self)
@@ -568,24 +485,6 @@ class PushSettingCard(SettingCard):
     clicked = pyqtSignal()
 
     def __init__(self, text, icon: Union[str, QIcon], title, content=None, parent=None):
-        """
-        Parameters
-        ----------
-        text: str
-            the text of push button
-
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
-
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        parent: QWidget
-            parent widget
-        """
         super().__init__(icon, title, content, parent)
         self.button = QPushButton(text, self)
         self.hBoxLayout.addWidget(self.button, 0, Qt.AlignRight)
@@ -603,24 +502,6 @@ class SpinBoxSettingCard(SettingCard):
     valueChanged = pyqtSignal(int)
 
     def __init__(self, configItem: ConfigItem, icon: Union[str, QIcon], title, content=None, parent=None):
-        """
-        Parameters
-        ----------
-        configItem: ConfigItem
-            configuration item operated by the card
-
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
-
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        parent: QWidget
-            parent widget
-        """
         super().__init__(icon, title, content, parent)
         self.configItem = configItem
         self.spinBox = SpinBox(self)
@@ -647,29 +528,7 @@ class SpinBoxSettingCard(SettingCard):
 
 
 class ComboBoxSettingCard(SettingCard):
-    def __init__(self, configItem: OptionsConfigItem, icon: Union[str, QIcon], title, content=None, texts=None,
-                 parent=None):
-        """
-        Parameters
-        ----------
-        configItem: OptionsConfigItem
-            configuration item operated by the card
-
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
-
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        texts: List[str]
-            the text of items
-
-        parent: QWidget
-            parent widget
-        """
+    def __init__(self, configItem: OptionsConfigItem, icon: Union[str, QIcon], title, content=None, texts=None, parent=None):
         super().__init__(icon, title, content, parent)
         self.configItem = configItem
         self.comboBox = ComboBox(self)
@@ -696,52 +555,57 @@ class ComboBoxSettingCard(SettingCard):
         qconfig.set(self.configItem, value)
 
 
-class OptionsSettingCard(ExpandSettingCard):
-    optionChanged = pyqtSignal(OptionsConfigItem)
+class BufSizePreviewCard(CardWidget):
 
-    def __init__(self, configItem, icon: Union[str, QIcon], title, content=None, texts=None, parent=None):
-        """
-        Parameters
-        ----------
-        configItem: OptionsConfigItem
-            options config item
+    def __init__(self, bufSize, parent=None):
+        super().__init__(parent)
+        self.bufSize = bufSize
+        self.name = bufSize.value
 
-        icon: str | QIcon | FluentIconBase
-            the icon to be drawn
+        self.radioButton = RadioButton(self.name, self)
 
-        title: str
-            the title of setting card
+        self.hBoxLayout = QHBoxLayout(self)
+        self.hBoxLayout.setContentsMargins(20, 6, 20, 6)
+        self.hBoxLayout.addWidget(self.radioButton)
 
-        content: str
-            the content of setting card
+        self.setFixedSize(180, 40)
+        self.setBorderRadius(8)
 
-        texts: List[str]
-            the texts of radio buttons
+        self.radioButton.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
-        parent: QWidget
-            parent window
-        """
-        super().__init__(icon, title, content, parent)
-        self.texts = texts or []
+    def setSelected(self, selected: bool):
+        self.radioButton.setChecked(selected)
+
+    def isSelected(self) -> bool:
+        return self.radioButton.isChecked()
+
+
+class BufSizeSettingCard(ExpandGroupSettingCard):
+
+    def __init__(self, configItem, icon: Union[str, QIcon], title, content=None, parent=None):
+        super().__init__(icon, title, content, parent=parent)
         self.configItem = configItem
-        self.configName = configItem.name
         self.choiceLabel = QLabel(self)
-        self.buttonGroup = QButtonGroup(self)
+        self.bufSizeCards = []
 
-        self.addWidget(self.choiceLabel)
+        self.bufSizeContainer = QWidget(self.view)
+        self.containerLayout = QHBoxLayout(self.bufSizeContainer)
+        self.bufSizeWidget = QWidget(self.bufSizeContainer)
+        self.bufSizeLayout = QGridLayout(self.bufSizeWidget)
 
-        self.viewLayout.setSpacing(19)
-        self.viewLayout.setContentsMargins(48, 18, 0, 18)
-        for text, option in zip(texts, configItem.options):
-            button = RadioButton(text, self.view)
-            self.buttonGroup.addButton(button)
-            self.viewLayout.addWidget(button)
-            button.setProperty(self.configName, option)
+        self.__initWidget()
 
-        self._adjustViewSize()
-        self.setValue(qconfig.get(self.configItem))
-        configItem.valueChanged.connect(self.setValue)
-        self.buttonGroup.buttonClicked.connect(self.__onButtonClicked)
+    def __initWidget(self):
+        self.__initLayout()
+        currentValue = qconfig.get(self.configItem)
+        for card in self.bufSizeCards:
+            if card.bufSize == currentValue:
+                card.setSelected(True)
+                self.choiceLabel.setText(card.name)
+                self.choiceLabel.adjustSize()
+                break
+
+        self.choiceLabel.setObjectName("titleLabel")
         if darkdetect.isDark():
             self.choiceLabel.setStyleSheet(
                 "font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
@@ -749,26 +613,53 @@ class OptionsSettingCard(ExpandSettingCard):
             self.choiceLabel.setStyleSheet(
                 "font: 13px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
 
-    def __onButtonClicked(self, button: RadioButton):
-        if button.text() == self.choiceLabel.text():
-            return
+    def __initLayout(self):
+        self.addWidget(self.choiceLabel)
 
-        value = button.property(self.configName)
-        qconfig.set(self.configItem, value)
+        self.bufSizeLayout.setSpacing(8)
+        self.bufSizeLayout.setContentsMargins(48, 14, 44, 14)
+        for i, bufSize in enumerate(self.configItem.options):
+            card = BufSizePreviewCard(bufSize, self.bufSizeWidget)
+            card.clicked.connect(lambda b=bufSize: self.__onBufSizeClicked(b))
+            self.bufSizeCards.append(card)
+            self.bufSizeLayout.addWidget(card, i // 3, i % 3)
 
-        self.choiceLabel.setText(button.text())
-        self.choiceLabel.adjustSize()
-        self.optionChanged.emit(self.configItem)
+        self.bufSizeLayout.setSizeConstraint(QGridLayout.SetFixedSize)
+
+        self.containerLayout.setContentsMargins(0, 0, 0, 0)
+        self.containerLayout.addStretch(1)
+        self.containerLayout.addWidget(self.bufSizeWidget)
+        self.containerLayout.addStretch(1)
+
+        self.viewLayout.setSpacing(0)
+        self.viewLayout.setContentsMargins(0, 0, 0, 0)
+        self.addGroupWidget(self.bufSizeContainer)
+
+    def _clearAllSelection(self):
+        for card in self.bufSizeCards:
+            card.setSelected(False)
 
     def setValue(self, value):
         qconfig.set(self.configItem, value)
+        for card in self.bufSizeCards:
+            if card.bufSize == value:
+                self._clearAllSelection()
+                card.setSelected(True)
+                self.choiceLabel.setText(card.name)
+                self.choiceLabel.adjustSize()
+                break
 
-        for button in self.buttonGroup.buttons():
-            isChecked = button.property(self.configName) == value
-            button.setChecked(isChecked)
-
-            if isChecked:
-                self.choiceLabel.setText(button.text())
+    def __onBufSizeClicked(self, bufSize):
+        if self.choiceLabel.text() == bufSize.value:
+            return
+        self._clearAllSelection()
+        for card in self.bufSizeCards:
+            if card.bufSize == bufSize:
+                card.setSelected(True)
+                self.choiceLabel.setText(card.name)
+                self.choiceLabel.adjustSize()
+                break
+        qconfig.set(self.configItem, bufSize)
 
 
 class SizeFilterItem(QWidget):
@@ -981,7 +872,7 @@ class CustomTypeFilterItem(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.config = cfg.IsCustomType
-        self.iconLabel = SettingIconWidget(FluentFontIcon("\ue77b"), self)
+        self.iconLabel = QLabel(self)
         self.titleLabel = QLabel("自定义", self)
         self.contentLabel = QLabel(self)
         if cfg.CustomType.value:
@@ -1136,15 +1027,11 @@ class FolderItem(QWidget):
         self.contentLabel = QLabel(self.config.value, self)
         self.setFixedHeight(56)
         if darkdetect.isDark():
-            self.titleLabel.setStyleSheet(
-                "font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
-            self.contentLabel.setStyleSheet(
-                "font: 11px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: rgb(208, 208, 208);")
+            self.titleLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: white;")
+            self.contentLabel.setStyleSheet("font: 11px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: rgb(208, 208, 208);")
         else:
-            self.titleLabel.setStyleSheet(
-                "font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
-            self.contentLabel.setStyleSheet(
-                "font: 11px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: rgb(96, 96, 96);")
+            self.titleLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: black;")
+            self.contentLabel.setStyleSheet("font: 11px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; padding: 0; border: none; background-color: transparent; color: rgb(96, 96, 96);")
 
         self.changeBtn = HyperlinkButton(self)
         self.changeBtn.setText("更改")
@@ -1180,21 +1067,6 @@ class CustomFolderListSettingCard(ExpandSettingCard):
     folderChanged = pyqtSignal(list)
 
     def __init__(self, title: str, content: str = None, parent=None):
-        """
-        Parameters
-        ----------
-        title: str
-            the title of card
-
-        content: str
-            the content of card
-
-        directory: str
-            working directory of file dialog
-
-        parent: QWidget
-            parent widget
-        """
         super().__init__(FluentFontIcon("\ue8f4"), title, content, parent)
         self.__initWidget()
 
@@ -1244,7 +1116,6 @@ class CustomFolderListSettingCard(ExpandSettingCard):
 
 
 class InfoIconWidget(QWidget):
-    """ Icon widget """
 
     def __init__(self, icon: InfoBarIcon, parent=None):
         super().__init__(parent=parent)
@@ -1332,7 +1203,6 @@ class InformationBar(QFrame):
         self.adjustSize()
 
     def addWidget(self, widget: QWidget, stretch=0):
-        """ add widget to info bar """
         self.widgetLayout.addSpacing(6)
         self.widgetLayout.addWidget(widget, stretch, Qt.AlignLeft | Qt.AlignTop)
 
@@ -1395,15 +1265,11 @@ class SettingInterface(SmoothScrollArea):
         self.enableTransparentBackground()
         self.settingLabel = QLabel("设置", self)
         if darkdetect.isDark():
-            self.scrollWidget.setStyleSheet(
-                "background-color: rgba(39, 39, 39, 0);")
-            self.settingLabel.setStyleSheet(
-                "font: 33px 'Microsoft YaHei Light'; background-color: transparent; color: white;")
+            self.scrollWidget.setStyleSheet("background-color: rgba(39, 39, 39, 0);")
+            self.settingLabel.setStyleSheet("font: 33px 'Microsoft YaHei Light'; background-color: transparent; color: white;")
         else:
-            self.scrollWidget.setStyleSheet(
-                "background-color: rgba(249, 249, 249, 0);")
-            self.settingLabel.setStyleSheet(
-                "font: 33px 'Microsoft YaHei Light'; background-color: transparent;")
+            self.scrollWidget.setStyleSheet("background-color: rgba(249, 249, 249, 0);")
+            self.settingLabel.setStyleSheet("font: 33px 'Microsoft YaHei Light'; background-color: transparent;")
 
         self.sourceGroup = SettingCardGroup('源', self.scrollWidget)
         self.actGroup = SettingCardGroup('行为', self.scrollWidget)
@@ -1411,6 +1277,7 @@ class SettingInterface(SmoothScrollArea):
         self.filterGroup = SettingCardGroup('文件过滤', self.scrollWidget)
         self.storageGroup = SettingCardGroup('存储', self.scrollWidget)
         self.advanceGroup = SettingCardGroup('高级', self.scrollWidget)
+        self.aboutGroup = SettingCardGroup('关于', self.scrollWidget)
         self.optionSourceCard = ComboBoxSettingCard(
             cfg.IsSourceCloud,
             FluentFontIcon("\ue8b7"),
@@ -1456,11 +1323,10 @@ class SettingInterface(SmoothScrollArea):
             '并行进程数',
             parent=self.performanceGroup
         )
-        self.bufSizeCard = OptionsSettingCard(
+        self.bufSizeCard = BufSizeSettingCard(
             cfg.BufSize,
             FluentFontIcon("\ueb05"),
             '缓冲区大小',
-            texts=['32 MB', '64 MB', '128 MB', '256 MB', '512 MB', '1 GB'],
             parent=self.performanceGroup
         )
         self.infoBar = InformationBar(
@@ -1511,14 +1377,28 @@ class SettingInterface(SmoothScrollArea):
             FluentFontIcon("\uea6b"),
             '帮助',
             '提示与常见问题',
-            self.advanceGroup
+            self.aboutGroup
+        )
+        self.aboutESCard = PrimaryPushSettingCard(
+            '检查更新',
+            QIcon(':/icon.png'),
+            'Presto',
+            VERSION,
+            self.aboutGroup
+        )
+        self.feedbackCard = PrimaryPushSettingCard(
+            '提供反馈',
+            FluentFontIcon("\ued15"),
+            '反馈',
+            '报告问题或提出建议',
+            self.aboutGroup
         )
         self.__initWidget()
 
     def __initWidget(self):
-        self.resize(1000, 800)
+        self.resize(500, 800)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setViewportMargins(0, 80, 0, 20)
+        self.setViewportMargins(0, 60, 0, 5)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         self.__initLayout()
@@ -1533,7 +1413,7 @@ class SettingInterface(SmoothScrollArea):
             self.sourceGroup.adjustSize()
 
     def __initLayout(self):
-        self.settingLabel.move(50, 20)
+        self.settingLabel.move(30, 10)
 
         self.sourceGroup.addSettingCard(self.optionSourceCard)
         self.sourceGroup.addSettingCard(self.cloudCard)
@@ -1550,15 +1430,18 @@ class SettingInterface(SmoothScrollArea):
         self.storageGroup.addSettingCard(self.clearCard)
         self.advanceGroup.addSettingCard(self.recoverCard)
         self.advanceGroup.addSettingCard(self.devCard)
-        self.advanceGroup.addSettingCard(self.helpCard)
+        self.aboutGroup.addSettingCard(self.aboutESCard)
+        self.aboutGroup.addSettingCard(self.helpCard)
+        self.aboutGroup.addSettingCard(self.feedbackCard)
         self.expandLayout.setSpacing(28)
-        self.expandLayout.setContentsMargins(60, 10, 60, 0)
+        self.expandLayout.setContentsMargins(25, 20, 25, 20)
         self.expandLayout.addWidget(self.sourceGroup)
         self.expandLayout.addWidget(self.actGroup)
         self.expandLayout.addWidget(self.performanceGroup)
         self.expandLayout.addWidget(self.filterGroup)
         self.expandLayout.addWidget(self.storageGroup)
         self.expandLayout.addWidget(self.advanceGroup)
+        self.expandLayout.addWidget(self.aboutGroup)
 
     def getSize(self):
         try:
@@ -1707,46 +1590,7 @@ class SettingInterface(SmoothScrollArea):
         self.recoverCard.clicked.connect(self.recoverConfig)
         self.devCard.clicked.connect(self.openConfig)
         self.helpCard.clicked.connect(self.onHelpAction)
-
-
-class DetailMessageBox(MessageBoxBase):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.titleLabel = SubtitleLabel('关于 Presto', self)
-        self.textBox = TextBrowser(self)
-        self.textBox.setText(
-            f'Presto v{VERSION}\nCopyright © {YEAR} BUG STUDIO\n\n' +
-            'MIT License\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n' +
-            'The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n' +
-            'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n'
-        )
-
-        self.githubBtn = HyperlinkButton(self)
-        self.websiteBtn = HyperlinkButton(self)
-        self.onlineDocBtn = HyperlinkButton(self)
-        self.githubBtn.setText('源代码')
-        self.websiteBtn.setText('网站主页')
-        self.onlineDocBtn.setText('在线文档')
-        self.githubBtn.setIcon(FluentFontIcon("\ue71b"))
-        self.websiteBtn.setIcon(FluentFontIcon("\ue774"))
-        self.onlineDocBtn.setIcon(FluentFontIcon("\ue8a5"))
-        self.githubBtn.setUrl("https://github.com/sudo0015/Presto")
-        self.websiteBtn.setUrl("https://sudo0015.github.io/")
-        self.onlineDocBtn.setUrl("https://sudo0015.github.io/post/Presto%20-bang-zhu.html")
-
-        self.btnLayout = QHBoxLayout(self)
-        self.btnLayout.addWidget(self.githubBtn)
-        self.btnLayout.addWidget(self.websiteBtn)
-        self.btnLayout.addWidget(self.onlineDocBtn)
-
-        self.viewLayout.addWidget(self.titleLabel)
-        self.viewLayout.addWidget(self.textBox)
-        self.viewLayout.addLayout(self.btnLayout)
-
-        self.yesButton.setText('确定')
-        self.hideCancelButton()
-
-        self.widget.setMinimumWidth(350)
+        self.feedbackCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/sudo0015/Presto/issues")))
 
 
 class CustomTypeMessageBoxItem(QWidget):
@@ -1864,11 +1708,9 @@ class CustomTypeMessageBox(MessageBoxBase):
         self.emptyLabel = QLabel('没有要显示的内容', self.scrollContent)
         self.emptyLabel.setAlignment(Qt.AlignCenter)
         if darkdetect.isDark():
-            self.emptyLabel.setStyleSheet(
-                "font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; color: #999999;")
+            self.emptyLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; color: #999999;")
         else:
-            self.emptyLabel.setStyleSheet(
-                "font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; color: #777777;")
+            self.emptyLabel.setStyleSheet("font: 14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC'; color: #777777;")
         self.emptyLabel.setHidden(True)
         self.scrollLayout.addWidget(self.emptyLabel, 0, Qt.AlignCenter)
 
@@ -2017,103 +1859,7 @@ class WelcomeMessageBox(MessageBoxBase):
             QDesktopServices.openUrl(QUrl("https://sudo0015.github.io/post/Presto%20-bang-zhu.html"))
 
 
-class AboutInterface(SmoothScrollArea):
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.scrollWidget = QWidget()
-        self.stateTooltip = None
-        self.expandLayout = ExpandLayout(self.scrollWidget)
-        self.enableTransparentBackground()
-        if darkdetect.isDark():
-            self.scrollWidget.setStyleSheet("background-color: rgba(39, 39, 39, 0);")
-        else:
-            self.scrollWidget.setStyleSheet("background-color: rgba(249, 249, 249, 0);")
-
-        self.aboutGroup = SettingCardGroup('', self.scrollWidget)
-        self.aboutESCard = PushSettingCard(
-            '详细信息',
-            FluentFontIcon("\ue946"),
-            '关于 Presto',
-            f'版本 {VERSION}',
-            self.aboutGroup
-        )
-        self.aboutBSCard = PushSettingCard(
-            '了解更多',
-            FluentFontIcon("\ue77b"),
-            '关于作者',
-            'BUG STUDIO',
-            self.aboutGroup
-        )
-        self.helpCard = PrimaryPushSettingCard(
-            '转到帮助',
-            FluentFontIcon("\uea6b"),
-            '帮助',
-            '提示与常见问题',
-            self.aboutGroup
-        )
-        self.feedbackCard = PrimaryPushSettingCard(
-            '提供反馈',
-            FluentFontIcon("\ued15"),
-            '反馈',
-            '报告问题或提出建议',
-            self.aboutGroup
-        )
-        self.__initWidget()
-
-    def __initWidget(self):
-        self.resize(1000, 800)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setViewportMargins(0, 0, 20, 0)
-        self.setWidget(self.scrollWidget)
-        self.setWidgetResizable(True)
-
-        self.imgLabel = ImageLabel(self)
-        if isDarkTheme():
-            self.imgLabel.setImage(':/BannerDark.png')
-        else:
-            self.imgLabel.setImage(':/BannerLight.png')
-        self.imgLabel.setFixedSize(401, 150)
-
-        self.__initLayout()
-        self.__connectSignalToSlot()
-
-    def __initLayout(self):
-
-        self.aboutGroup.addSettingCard(self.aboutESCard)
-        self.aboutGroup.addSettingCard(self.aboutBSCard)
-        self.aboutGroup.addSettingCard(self.helpCard)
-        self.aboutGroup.addSettingCard(self.feedbackCard)
-
-        self.expandLayout.setContentsMargins(60, 10, 60, 0)
-        self.expandLayout.addWidget(self.imgLabel)
-        self.expandLayout.addWidget(self.aboutGroup)
-
-    def onAboutESCardClicked(self):
-        w = DetailMessageBox(self.window())
-        if w.exec():
-            pass
-
-    def onHelpAction(self):
-        if os.path.exists(os.path.abspath("./Doc/PrestoHelp.html")):
-            os.startfile(os.path.abspath("./Doc/PrestoHelp.html"))
-        else:
-            QDesktopServices.openUrl(QUrl("https://sudo0015.github.io/post/Presto%20-bang-zhu.html"))
-
-    def onAboutBSAction(self):
-        if os.path.exists(os.path.abspath("./Doc/AboutBugStudio.html")):
-            os.startfile(os.path.abspath("./Doc/AboutBugStudio.html"))
-        else:
-            QDesktopServices.openUrl(QUrl("https://sudo0015.github.io/post/guan-yu-%20BUG%20STUDIO.html"))
-
-    def __connectSignalToSlot(self):
-        self.aboutESCard.clicked.connect(self.onAboutESCardClicked)
-        self.aboutBSCard.clicked.connect(self.onAboutBSAction)
-        self.helpCard.clicked.connect(self.onHelpAction)
-        self.feedbackCard.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/sudo0015/Presto/issues")))
-
-
 class TitleBarBase(QWidget):
-    """ Title bar base class """
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -2141,7 +1887,6 @@ class TitleBarBase(QWidget):
         return super().eventFilter(obj, e)
 
     def mouseDoubleClickEvent(self, event):
-        """ Toggles the maximization state of the window """
         if event.button() != Qt.LeftButton or not self._isDoubleClickEnabled:
             return
 
@@ -2160,7 +1905,6 @@ class TitleBarBase(QWidget):
         startSystemMove(self.window(), e.globalPos())
 
     def __toggleMaxState(self):
-        """ Toggles the maximization state of the window and change icon """
         if self.window().isMaximized():
             self.window().showNormal()
         else:
@@ -2171,7 +1915,6 @@ class TitleBarBase(QWidget):
             releaseMouseLeftButton(self.window().winId())
 
     def _isDragRegion(self, pos):
-        """ Check whether the position belongs to the area where dragging is allowed """
         width = 0
         for button in self.findChildren(TitleBarButton):
             if button.isVisible():
@@ -2180,26 +1923,16 @@ class TitleBarBase(QWidget):
         return 0 < pos.x() < self.width() - width
 
     def _hasButtonPressed(self):
-        """ whether any button is pressed """
         return any(btn.isPressed() for btn in self.findChildren(TitleBarButton))
 
     def canDrag(self, pos):
-        """ whether the position is draggable """
         return self._isDragRegion(pos) and not self._hasButtonPressed()
 
     def setDoubleClickEnabled(self, isEnabled):
-        """ whether to switch window maximization status when double clicked
-
-        Parameters
-        ----------
-        isEnabled: bool
-            whether to enable double click
-        """
         self._isDoubleClickEnabled = isEnabled
 
 
 class TitleBar(TitleBarBase):
-    """ Title bar with minimize, maximum and close button """
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -2215,7 +1948,6 @@ class TitleBar(TitleBarBase):
 
 
 class FluentTitleBar(TitleBar):
-    """ Fluent title bar"""
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -2265,7 +1997,6 @@ class MSFluentTitleBar(FluentTitleBar):
 
 
 class MSFluentWindow(FluentWindowBase):
-    """ Fluent window in Microsoft Store style """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -2283,24 +2014,6 @@ class MSFluentWindow(FluentWindowBase):
     def addSubInterface(self, interface: QWidget, icon: Union[QIcon, str], text: str,
                         selectedIcon=None, position=NavigationItemPosition.TOP,
                         isTransparent=False) -> NavigationBarPushButton:
-        """
-        Parameters
-        ----------
-        interface: QWidget
-            the subinterface to be added
-
-        icon: FluentIconBase | QIcon | str
-            the icon of navigation item
-
-        text: str
-            the text of navigation item
-
-        selectedIcon: str | QIcon | FluentIconBase
-            the icon of navigation item in selected state
-
-        position: NavigationItemPosition
-            the position of navigation item
-        """
         if not interface.objectName():
             sys.exit()
 
@@ -2340,16 +2053,16 @@ class Main(MSFluentWindow):
         self.setWindowTitle('Presto 设置')
         self.setWindowIcon(QIcon(':/icon.png'))
         self.titleBar.raise_()
-        desktop = QApplication.screens()[0].size()
-        self.move(desktop.width() // 2 - self.width() // 2, desktop.height() // 2 - self.height() // 2)
+        self.move(
+            QApplication.screens()[0].size().width() // 2 - self.width() // 2,
+            QApplication.screens()[0].size().height() // 2 - self.height() // 2
+        )
 
         self.splashScreen = SplashScreen(self.windowIcon(), self)
         self.splashScreen.raise_()
 
         self.settingInterface = SettingInterface(self)
-        self.aboutInterface = AboutInterface(self)
         self.settingInterface.setObjectName('settingInterface')
-        self.aboutInterface.setObjectName('aboutInterface')
         self.addSubInterface(
             self.settingInterface,
             FluentFontIcon("\ue713"),
@@ -2371,13 +2084,6 @@ class Main(MSFluentWindow):
             onClick=self.onHelpBtn,
             selectable=False,
             position=NavigationItemPosition.BOTTOM
-        )
-        self.addSubInterface(
-            self.aboutInterface,
-            FluentFontIcon("\ue946"),
-            '关于',
-            FluentFontIcon("\uf167"),
-            NavigationItemPosition.BOTTOM
         )
         self.navigationInterface.setCurrentItem(self.settingInterface.objectName())
 

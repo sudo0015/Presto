@@ -11,7 +11,7 @@ from PrestoConfig import cfg
 from psutil import disk_partitions
 from win32api import GetVolumeInformation
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEvent, QRunnable, QThreadPool, QObject, QUrl
-from PyQt5.QtGui import QIcon, QColor, QPainter, QDesktopServices
+from PyQt5.QtGui import QIcon, QColor, QPainter, QDesktopServices, QPixmap
 from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMainWindow, QAction, QFrame, QLabel, QVBoxLayout, \
     QGraphicsOpacityEffect, QGridLayout, QHBoxLayout
 from qfluentwidgets import RoundMenu, setTheme, Theme, InfoBarPosition, IndeterminateProgressRing, FluentStyleSheet, \
@@ -415,7 +415,9 @@ class TrayApp:
         self._quit_action = QAction()
         self._tray_icon_menu = RoundMenu("", self.main_window)
         self.exeSubMenu = RoundMenu("快速启动", self._tray_icon_menu)
-        self.exeSubMenu.setIcon(FluentFontIcon("\ue724"))
+        transparent_pixmap = QPixmap(16, 16)
+        transparent_pixmap.fill(Qt.transparent)
+        self.exeSubMenu.setIcon(QIcon(transparent_pixmap))
         self.ejectSubMenu = RoundMenu("退出U盘", self._tray_icon_menu)
         self.ejectSubMenu.setIcon(FluentFontIcon("\uf847"))
 
@@ -439,7 +441,9 @@ class TrayApp:
             self._tray_icon_menu.exec(self.tray_icon.geometry().center())
 
     def createActions(self):
-        self._launcher_action = QAction(FluentFontIcon("\ue74c").icon(), "启动台")
+        transparent_pixmap_launcher = QPixmap(16, 16)
+        transparent_pixmap_launcher.fill(Qt.transparent)
+        self._launcher_action = QAction(QIcon(transparent_pixmap_launcher), "启动台")
         self._launcher_action.triggered.connect(self.openLauncher)
         self._setting_action = QAction(FluentFontIcon("\ue713").icon(), "设置")
         self._setting_action.triggered.connect(self.openSetting)

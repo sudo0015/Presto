@@ -20,7 +20,6 @@ AcrylicWindow = FramelessWindow
 
 
 class FramelessDialog(QDialog, FramelessWindow):
-    """ Frameless dialog """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -31,14 +30,12 @@ class FramelessDialog(QDialog, FramelessWindow):
 
 
 class FramelessMainWindow(QMainWindow, FramelessWindow):
-    """ Frameless main window """
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
 
 class WindowsFramelessWindow(QWidget):
-    """  Frameless window for Windows system """
 
     BORDER_WIDTH = 5
 
@@ -56,14 +53,12 @@ class WindowsFramelessWindow(QWidget):
         else:
             self.setStyleSheet("background-color: rgb(249, 249, 249);")
 
-        # solve issue #5
         self.windowHandle().screenChanged.connect(self.__onScreenChanged)
 
         self.resize(500, 500)
         self.titleBar.raise_()
 
     def updateFrameless(self):
-        """ update frameless window """
         if not win_utils.isWin7():
             self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         elif self.parent():
@@ -71,19 +66,11 @@ class WindowsFramelessWindow(QWidget):
         else:
             self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowMinMaxButtonsHint)
 
-        # add DWM shadow and window animation
         self.windowEffect.addWindowAnimation(self.winId())
         if not isinstance(self, AcrylicWindow):
             self.windowEffect.addShadowEffect(self.winId())
 
     def setTitleBar(self, titleBar):
-        """ set custom title bar
-
-        Parameters
-        ----------
-        titleBar: TitleBar
-            title bar
-        """
         self.titleBar.deleteLater()
         self.titleBar.hide()
         self.titleBar = titleBar
@@ -91,7 +78,6 @@ class WindowsFramelessWindow(QWidget):
         self.titleBar.raise_()
 
     def setResizeEnabled(self, isEnabled: bool):
-        """ set whether resizing is enabled """
         self._isResizeEnabled = isEnabled
 
     def resizeEvent(self, e):
@@ -99,25 +85,15 @@ class WindowsFramelessWindow(QWidget):
         self.titleBar.resize(self.width(), self.titleBar.height())
 
     def isSystemButtonVisible(self):
-        """ Returns whether the system title bar button is visible """
         return self._isSystemButtonVisible
 
     def setSystemTitleBarButtonVisible(self, isVisible):
-        """ set the visibility of system title bar button, only works for macOS """
         pass
 
     def systemTitleBarRect(self, size: QSize) -> QRect:
-        """ Returns the system title bar rect, only works for macOS
-
-        Parameters
-        ----------
-        size: QSize
-            original system title bar rect
-        """
         return QRect(0, 0, size.width(), size.height())
 
     def nativeEvent(self, eventType, message):
-        """ Handle the Windows message """
         msg = MSG.from_address(message.__int__())
         if not msg.hWnd:
             return super().nativeEvent(eventType, message)
@@ -129,7 +105,6 @@ class WindowsFramelessWindow(QWidget):
             w = self.frameGeometry().width()
             h = self.frameGeometry().height()
 
-            # fixes issue https://github.com/zhiyiYo/PyQt-Frameless-Window/issues/98
             bw = 0 if win_utils.isMaximized(msg.hWnd) or win_utils.isFullScreen(msg.hWnd) else self.BORDER_WIDTH
             lx = xPos < bw
             rx = xPos > w - bw
@@ -160,7 +135,6 @@ class WindowsFramelessWindow(QWidget):
             isMax = win_utils.isMaximized(msg.hWnd)
             isFull = win_utils.isFullScreen(msg.hWnd)
 
-            # adjust the size of client rect
             if isMax and not isFull:
                 ty = win_utils.getResizeBorderThickness(msg.hWnd, False)
                 rect.top += ty
@@ -170,7 +144,6 @@ class WindowsFramelessWindow(QWidget):
                 rect.left += tx
                 rect.right -= tx
 
-            # handle the situation that an auto-hide taskbar is enabled
             if (isMax or isFull) and Taskbar.isAutoHide():
                 position = Taskbar.getPosition(msg.hWnd)
                 if position == Taskbar.LEFT:
@@ -194,7 +167,6 @@ class WindowsFramelessWindow(QWidget):
 
 
 class AcrylicWindow(WindowsFramelessWindow):
-    """ A frameless window with acrylic effect """
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -221,10 +193,8 @@ class AcrylicWindow(WindowsFramelessWindow):
                 self.windowEffect.addShadowEffect(self.winId())
 
     def nativeEvent(self, eventType, message):
-        """ Handle the Windows message """
         msg = MSG.from_address(message.__int__())
 
-        # handle Alt+F4
         if msg.message == win32con.WM_SYSKEYDOWN:
             if msg.wParam == win32con.VK_F4:
                 self.__closedByKey = True
@@ -238,6 +208,5 @@ class AcrylicWindow(WindowsFramelessWindow):
             self.__closedByKey = False
             return super().closeEvent(e)
 
-        # system tray icon
         self.__closedByKey = False
         self.hide()
