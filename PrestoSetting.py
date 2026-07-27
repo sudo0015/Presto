@@ -8,19 +8,20 @@ import portalocker
 import PrestoResource
 from enum import Enum
 from typing import Union
-from PrestoConfig import cfg, BufSize, VERSION, YEAR
+from PrestoConfig import cfg, BufSize, VERSION
 from pygetwindow import getWindowsWithTitle as GetWindow
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QThread, QRectF, QEasingCurve, QEvent, QUrl, QDir
 from PyQt5.QtGui import QColor, QIcon, QPainter, QTextCursor, QPainterPath, QCursor, QDesktopServices
 from PyQt5.QtWidgets import QFrame, QApplication, QWidget, QHBoxLayout, QFileDialog, QLabel, QVBoxLayout, QGridLayout, \
-    QPushButton, QTextBrowser, QTextEdit, QSizePolicy, QLineEdit, QSpinBox, QScrollArea, QScroller, QAction
+    QPushButton, QTextEdit, QSizePolicy, QLineEdit, QSpinBox, QScrollArea, QScroller, QAction
 from qfluentwidgets import NavigationItemPosition, SubtitleLabel, MessageBox, ExpandLayout, SettingCardGroup, \
     RadioButton, ExpandSettingCard, ComboBox, SwitchButton, IndicatorPosition, qconfig, isDarkTheme, ConfigItem, \
     OptionsConfigItem, FluentStyleSheet, HyperlinkButton, Slider, IconWidget, drawIcon, setThemeColor, MessageBoxBase, \
     SmoothScrollDelegate, setFont, themeColor, setTheme, Theme, qrouter, NavigationBar, SplashScreen, InfoBarIcon, \
     PushButton, TextWrap, TransparentToolButton, NavigationBarPushButton, TransparentDropDownPushButton, LineEdit, \
-    ToolTipFilter, ToolTipPosition, FluentFontIconBase, BodyLabel, InfoBar, InfoBarPosition, CardWidget, ExpandGroupSettingCard
-from qfluentwidgets.components.widgets.line_edit import EditLayer, LineEditButton
+    ToolTipFilter, ToolTipPosition, FluentFontIconBase, BodyLabel, InfoBar, InfoBarPosition, ExpandGroupSettingCard, \
+    CardWidget
+from qfluentwidgets.components.widgets.line_edit import LineEditButton
 from qfluentwidgets.components.widgets.menu import MenuAnimationType, RoundMenu, CheckableMenu, MenuIndicatorType
 from qfluentwidgets.components.widgets.spin_box import SpinButton, SpinIcon
 from qfluentwidgets.window.fluent_window import FluentWindowBase
